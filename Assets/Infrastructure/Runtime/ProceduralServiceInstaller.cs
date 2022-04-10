@@ -1,4 +1,5 @@
 using AIR.Flume;
+using Application.Interfaces;
 
 namespace Infrastructure.Runtime
 {
@@ -6,6 +7,9 @@ namespace Infrastructure.Runtime
     {
         protected override void InstallServices(FlumeServiceContainer container)
         {
+            container
+                .Register<IValueSourceService, PseudoRandomSourceService>()
+                .Register<ISeedService, SeedService>();
         }
     }
 }
