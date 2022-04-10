@@ -8,8 +8,8 @@ public class PlayerController : MonoBehaviour
     public float rotationSpeed;
     public float jumpForce;
     public float gravMultiplier;
-    public CharacterController controller;
 
+    private CharacterController controller;
     private Vector3 moveDirection;
     private float verticalMove;
     

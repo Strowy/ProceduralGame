@@ -30,10 +30,13 @@ public class TerrainController : MonoBehaviour
     private int px, pz;
 
     private bool spawned;
-    
+
     // Start is called before the first frame update
     void Start()
     {
+        // Get seed
+        seedValue = GameObject.FindGameObjectWithTag("WorldController").GetComponent<WorldController>().seedValue;
+
         // Spawn point information
         spawned = false;
         

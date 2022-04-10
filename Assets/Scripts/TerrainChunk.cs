@@ -6,7 +6,9 @@ public class TerrainChunk : MonoBehaviour
 {
     // Map piece that is instantiated
     public Transform terrainObject;
-
+    // Portals both active and dead
+    public Transform portal_Active;
+    public Transform portal_Dead;
     // Materials for the various terrain types
     public Material[] terrainMaterials;
 
@@ -64,10 +66,25 @@ public class TerrainChunk : MonoBehaviour
                 if (dataCell[2] == 2)
                 {
                     mCell.GetComponent<MeshRenderer>().material = terrainMaterials[8];
+
+                    // Check if the dungeon is on the list of cleared dungeons
+                    if (GameObject.FindGameObjectWithTag("WorldController").GetComponent<WorldController>().CheckCleared((int)xPos, (int)zPos))
+                    {
+                        Object.Instantiate(portal_Dead, new Vector3(xPos, yPos + cellSize * 2, zPos), Quaternion.identity, this.transform);
+                    }
+                    else
+                    {
+                        Object.Instantiate(portal_Active, new Vector3(xPos, yPos + cellSize * 2, zPos), Quaternion.identity, this.transform);
+                    }  
                 }
                 // If Dungeon Surrounds
-                if (dataCell[2] >= 3 && dataCell[2] < 11)
+                if (dataCell[2] == 3)
                 {
+                    mCell.GetComponent<MeshRenderer>().material = terrainMaterials[8];
+                }
+                if (dataCell[2] == 4)
+                {
+                    mCell.transform.position = new Vector3(xPos, yPos + 2 * cellSize, zPos);
                     mCell.GetComponent<MeshRenderer>().material = terrainMaterials[9];
                 }
 
@@ -121,9 +138,10 @@ public class MapCellProcessor
     // Main function to produce map cell information. Returns [height, terrain type, special data]
     public int[] CellData(int x, int y)
     {
-        int[] g = new int[3];
+        int[] g = new int[4] { 0, 0, 0, 0 };
         float hVal;
         int bx, by;
+        Tuple spc;
         int n = 8; // 8 types of base terrain
 
         // Biome x, y values
@@ -136,22 +154,24 @@ public class MapCellProcessor
         // Get terrain type then calculate height and other values from that
         g[1] = TerrainType(hVal, n);
         // Special terrain type check
-        g[2] = SpecialTerrainType(x, y, g[1], bx, by);
+        spc = SpecialTerrainType(x, y, g[1], bx, by);
+        g[2] = spc.a; g[3] = spc.b;
         // Terrain height
-        g[0] = TerrainHeight(x, y, hVal, g[1], g[2]);
+        g[0] = TerrainHeight(hVal, g);
 
         return g;
     }
 
     // Test for special types of terrain
-    private int SpecialTerrainType(int x, int y, int tType, int bx, int by)
+    private Tuple SpecialTerrainType(int x, int y, int tType, int bx, int by)
     {
         // Type values:
         // 1: Water terrain
         // 2: Dungeon Portal
         // 3-10: Dungeon Surroundings
-        
-        int r = 0;
+
+
+        Tuple r = new Tuple(0, 0);
         int dx, dy;
         int de;
 
@@ -159,39 +179,42 @@ public class MapCellProcessor
         dy = y - (by * biomeSize);
 
         // If water terrain
-        if (tType == 0 || tType == 1) { r = 1; }
+        if (tType == 0 || tType == 1) { r.a = 1; }
         
         // Check for Dungeon Portals (only appear on certain terrain)
         if (tType == 4)
         {
             // Make it so it cannot appear on border cells of biome
-            de = rNumber.IntVal(bx, by, (biomeSize - 2) * (biomeSize - 2));
-            de = (Mod(de, biomeSize - 2) + 1) + (Mathf.FloorToInt((float)de / (biomeSize - 2)) + 1) * biomeSize;
+            de = rNumber.IntVal(bx, by, (biomeSize - 4) * (biomeSize - 4));
+            de = (Mod(de, biomeSize - 4) + 2) + (Mathf.FloorToInt((float)de / (biomeSize - 4)) + 2) * biomeSize;
 
-            if (dx + dy * biomeSize == de) { r = 2; }
+            if (dx + dy * biomeSize == de) { r.a = 2; }
         }
         // Check for Dungeon Surroundings
-        if ((tType == 3 || tType == 4 || tType == 5) && (r != 2))
+        if ((tType == 3 || tType == 4 || tType == 5) && (r.a != 2))
         {
             int ex, ey;
 
             // Make it so portal cannot appear on border cells of biome (otherwise walls would cut off)
-            de = rNumber.IntVal(bx, by, (biomeSize - 2) * (biomeSize - 2));
-            de = (Mod(de, biomeSize - 2) + 1) + (Mathf.FloorToInt((float)de / (biomeSize - 2)) + 1) * biomeSize;
+            de = rNumber.IntVal(bx, by, (biomeSize - 4) * (biomeSize - 4));
+            de = (Mod(de, biomeSize - 4) + 2) + (Mathf.FloorToInt((float)de / (biomeSize - 4)) + 2) * biomeSize;
             ex = Mod(de, biomeSize);
             ey = Mathf.FloorToInt((float)de / biomeSize);
 
             // Creates a wall in the eight spaces around the dungeon portal
-            if ((Mathf.Abs(dx - ex) < 2) && (Mathf.Abs(dy - ey) < 2))
+            if ((Mathf.Abs(dx - ex) < 3) && (Mathf.Abs(dy - ey) < 3))
             {
-                if (TerrainType(mapNoise.Perlin2D(x - (dx - ex), y - (dy - ey)), 8) == 4)
+                float hVal = mapNoise.Perlin2D(x - (dx - ex), y - (dy - ey));
+                if (TerrainType(hVal, 8) == 4)
                 {
-                    int[,] wallId = new int[8, 2] { { -1, -1 }, { 0, -1 }, { 1, -1 }, { -1, 0 }, { 1, 0 }, { -1, 1 }, { 0, 1 }, { 1, 1 } };
+                    r.a = 3;
+                    r.b = TerrainHeight(hVal, new int[4] { 0, 4, 2, 0});
 
-                    for (int i = 0; i < 8; i++)
+                    if (((Mathf.Abs(dx - ex) > 0) && (Mathf.Abs(dy - ey) > 1)) || ((Mathf.Abs(dx - ex) > 1) && (Mathf.Abs(dy - ey) > 0)))
                     {
-                        if (dx - ex == wallId[i, 0] && dy - ey == wallId[i, 1]) { r = i + 3; }
+                        r.a = 4;
                     }
+
                 }
             }
         }
@@ -214,31 +237,21 @@ public class MapCellProcessor
         return r;
     }
 
-    private int TerrainHeight(int x, int y, float height, int n, int spec)
+    private int TerrainHeight(float height, int[] vals)
     {
         int r = 0;
         
-        if (spec < 3) // Unmodified height values
+        if (vals[2] < 3) // Unmodified height values
         {
-            r = (int)(((height - terrainModifiers[n, 0]) * terrainModifiers[n, 1] + terrainModifiers[n, 2]) * maxHeight);
+            r = (int)(((height - terrainModifiers[vals[1], 0]) * terrainModifiers[vals[1], 1] + terrainModifiers[vals[1], 2]) * maxHeight);
         }
-        else if (spec >= 3 && spec < 11) // Dungeon surround height values
+        else if (vals[2] == 3) // Dungeon surround height values
         {
-            float hVal;
-            int[] dir = new int[2];
-            int[,] wallId = new int[8, 2] { { -1, -1 }, { 0, -1 }, { 1, -1 }, { -1, 0 }, { 1, 0 }, { -1, 1 }, { 0, 1 }, { 1, 1 } };
-            int[] ent = new int[4] { 4, 6, 7, 9 };
-
-            dir[0] = wallId[spec - 3, 0];
-            dir[1] = wallId[spec - 3, 1];
-
-            hVal = mapNoise.Perlin2D(x - dir[0], y - dir[1]);
-            n = TerrainType(hVal, 8);
-
-            r = (int)(((hVal - terrainModifiers[n, 0]) * terrainModifiers[n, 1] + terrainModifiers[n, 2]) * maxHeight);
-
-            // Create entrance, walls
-            if (spec != ent[rNumber.IntVal(x - dir[0], y - dir[1], 4)]) { r += 4; }
+            r = vals[3];
+        }
+        else if (vals[2] == 4)
+        {
+            r = vals[3];
         }
         
         return r;
@@ -248,6 +261,14 @@ public class MapCellProcessor
     {
         if (a < 0) { return (a % b + b) % b; }
         else { return a % b; }
+    }
+
+    struct Tuple
+    {
+        public int a;
+        public int b;
+
+        public Tuple(int da, int db) { a = da; b = db; }
     }
 }
 
@@ -348,102 +369,4 @@ public class PerlinNoise
     private float Dot(float[] a, int[] b) { return a[0] * b[0] + a[1] * b[1]; }
 
     private float Lerp(float v0, float v1, float t) { return (1 - t) * v0 + t * v1; }
-}
-
-public class PseudoRandomGenerator
-{
-    // Permutation array and its period
-    private readonly int[] permutation = {
-        151, 160, 137, 91, 90, 15, 131, 13, 201, 95,
-        96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69,
-        142, 8, 99, 37, 240, 21, 10, 23, 190, 6, 148,
-        247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219,
-        203, 117, 35, 11, 32, 57, 177, 33, 88, 237, 149,
-        56, 87, 174, 20, 125, 136, 171, 168, 68, 175, 74,
-        165, 71, 134, 139, 48, 27, 166, 77, 146, 158,
-        231, 83, 111, 229, 122, 60, 211, 133, 230, 220,
-        105, 92, 41, 55, 46, 245, 40, 244, 102, 143, 54,
-        65, 25, 63, 161, 1, 216, 80, 73, 209, 76, 132,
-        187, 208, 89, 18, 169, 200, 196, 135, 130, 116,
-        188, 159, 86, 164, 100, 109, 198, 173, 186, 3,
-        64, 52, 217, 226, 250, 124, 123, 5, 202, 38, 147,
-        118, 126, 255, 82, 85, 212, 207, 206, 59, 227,
-        47, 16, 58, 17, 182, 189, 28, 42, 223, 183, 170,
-        213, 119, 248, 152, 2, 44, 154, 163, 70, 221, 153,
-        101, 155, 167, 43, 172, 9, 129, 22, 39, 253, 19,
-        98, 108, 110, 79, 113, 224, 232, 178, 185, 112,
-        104, 218, 246, 97, 228, 251, 34, 242, 193, 238,
-        210, 144, 12, 191, 179, 162, 241, 81, 51, 145,
-        235, 249, 14, 239, 107, 49, 192, 214, 31, 181,
-        199, 106, 157, 184, 84, 204, 176, 115, 121, 50,
-        45, 127, 4, 150, 254, 138, 236, 205, 93, 222, 114,
-        67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215,
-        61, 156, 180};
-
-    private readonly int period;
-
-    private readonly int[] numArray;
-
-    // Constructor
-    public PseudoRandomGenerator(int seed)
-    {
-        period = permutation.Length;
-        numArray = new int[period];
-
-        int a, b;
-        a = (int)((float)seed / period);
-        b = Mod(seed, period);
-
-        for (int i = 0; i < period; i++)
-        {
-            numArray[i] = Mod(permutation[i] + a + b, period);
-        }
-    }
-
-    // Return a bound float between [0, 1]
-    public float UnitFloat(int x)
-    {
-        // Permutation values
-        int a, b;
-        x += period;
-        a = (int)((float)x / period);
-        b = Mod(x, period);
-
-        return (float)(numArray[Mod(x, period)] + numArray[Mod((x * a), period)] + numArray[Mod((x + b), period)]) / (period * 3);
-    }
-
-    // Return a bound float between [0, 1]
-    public float UnitFloat(int x, int y)
-    {
-        // Permutation values
-        int a, b, dx;
-        float dy;
-
-        x += period;
-        a = (int)((float)x / period);
-        b = Mod(x, period);
-
-        dx = (numArray[Mod(x, period)] + numArray[Mod((x * a), period)] + numArray[Mod((x + b), period)]);
-
-        // Second-step permutation values
-        y += dx;
-        a = (int)((float)y / period);
-        b = Mod(y, period);
-
-        dy = (float)(numArray[Mod(y, period)] + numArray[Mod((y * a), period)] + numArray[Mod((y + b), period)]) / (period * 3);
-
-        return dy;
-    }
-
-    // Return an integer in the range [0, n]
-    public int IntVal(int x, int y, int n)
-    {
-        return (int)(UnitFloat(x, y) * n);
-    }
-
-    private int Mod(int a, int b)
-    {
-        if (a < 0) { return (a % b + b) % b; }
-        else { return a % b; }
-    }
 }
