@@ -1,5 +1,15 @@
 {
   "dependencies": {
+    "com.air.flume": {
+      "version": "https://github.com/AnImaginedReality/Flume.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.test-framework": "1.0.13",
+        "com.unity.ext.nunit": "1.0.0"
+      },
+      "hash": "130b0c511b24d538f7aa88744cc8e7c988bb6e2d"
+    },
     "com.unity.ext.nunit": {
       "version": "1.0.6",
       "depth": 1,
