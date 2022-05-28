@@ -13,6 +13,12 @@ namespace Domain
             Y = y;
         }
 
+        public static IntegerPoint Zero => new IntegerPoint(0, 0);
+
+        public IntegerPoint Invert() => new IntegerPoint(Y, X);
+
+        public IntegerPoint Abs() => new IntegerPoint(Math.Abs(X), Math.Abs(Y));
+
         public bool Equals(IntegerPoint other)
             => X == other.X && Y == other.Y;
 
@@ -34,8 +40,14 @@ namespace Domain
         public static IntegerPoint operator +(IntegerPoint lhs, int rhs)
             => new IntegerPoint(lhs.X + rhs, lhs.Y + rhs);
 
+        public static IntegerPoint operator -(IntegerPoint lhs, IntegerPoint rhs)
+            => new IntegerPoint(lhs.X - rhs.X, lhs.Y - rhs.Y);
+
         public static IntegerPoint operator -(IntegerPoint lhs, int rhs)
             => new IntegerPoint(lhs.X - rhs, lhs.Y - rhs);
+
+        public static IntegerPoint operator *(IntegerPoint lhs, IntegerPoint rhs)
+            => new IntegerPoint(lhs.X * rhs.X, lhs.Y * rhs.Y);
 
         public static IntegerPoint operator *(IntegerPoint lhs, int rhs)
             => new IntegerPoint(lhs.X * rhs, lhs.Y * rhs);
@@ -44,6 +56,6 @@ namespace Domain
             => new IntegerPoint(lhs.X / rhs, lhs.Y / rhs);
 
         public override string ToString()
-            => $"(X: {X}, X: {Y})";
+            => $"(X: {X}, Y: {Y})";
     }
 }

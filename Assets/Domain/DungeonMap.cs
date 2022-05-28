@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Domain
 {
@@ -11,6 +12,17 @@ namespace Domain
         {
             Bounds = new RectBounds(minX, minY, maxX, maxY);
             Cells = new int[Bounds.Width * Bounds.Height];
+        }
+
+        public IEnumerable<IntegerPoint> MapCells()
+        {
+            for (var x = Bounds.MinX; x < Bounds.MaxX + 1; x++)
+            {
+                for (var y = Bounds.MinY; y < Bounds.MaxY + 1; y++)
+                {
+                    yield return new IntegerPoint(x, y);
+                }
+            }
         }
 
         public void SetValue(IntegerPoint point, int value)
@@ -33,6 +45,42 @@ namespace Domain
                 Bounds.MinY + buffer,
                 Bounds.MaxX - buffer,
                 Bounds.MaxY - buffer);
+        }
+
+        public bool WithinMap(IntegerPoint point)
+        {
+            return Bounds.WithinBounds(point);
+        }
+
+        public IntegerPoint DirectionToClosestEdge(IntegerPoint position)
+        {
+            var currDistance = Math.Max(Bounds.Width, Bounds.Height);
+            var (x, y) = (0, 0);
+            if (Bounds.MaxX - position.X < currDistance)
+            {
+                currDistance = Bounds.MaxX - position.X;
+                x = 1;
+            }
+
+            if (position.X - Bounds.MinX < currDistance)
+            {
+                currDistance = position.X - Bounds.MinX;
+                x = -1;
+            }
+
+            if (Bounds.MaxY - position.Y < currDistance)
+            {
+                currDistance = Bounds.MaxY - position.Y;
+                x = 0;
+                y = 1;
+            }
+
+            if (position.Y - Bounds.MinY < currDistance)
+            {
+                y = -1;
+            }
+
+            return new IntegerPoint(x, y);
         }
     }
 }

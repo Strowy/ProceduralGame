@@ -8,8 +8,8 @@ namespace Domain
         public int MaxY { get; }
         public int MinX { get; }
         public int MinY { get; }
-        public int Height => MaxY - MinY;
-        public int Width => MaxX - MinX;
+        public int Height => (MaxY - MinY) + 1;
+        public int Width => (MaxX - MinX) + 1;
 
         public RectBounds(int minX, int minY, int maxX, int maxY)
         {
@@ -57,6 +57,11 @@ namespace Domain
             var minY = Math.Max(MinY, rhs.MinY);
             var maxY = Math.Min(MaxY, rhs.MaxY);
             return new RectBounds(minX, minY, maxX, maxY);
+        }
+
+        public override string ToString()
+        {
+            return $"Bounds: minX: {MinX}, maxX: {MaxX}, minY: {MinY}, maxY: {MaxY}";
         }
     }
 }
