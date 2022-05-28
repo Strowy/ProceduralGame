@@ -46,7 +46,7 @@ namespace Infrastructure.Tests
         public void UnitFloat_WithSameCellInputAndUnchangedSeed_ShouldAlwaysReturnSameValue()
         {
             // Arrange
-            var inputValue = new Cell(123, 123);
+            var inputValue = new IntegerPoint(123, 123);
             const int SEED = 1234;
             var valueSource = new PseudoRandomSource(SEED);
 

@@ -28,9 +28,9 @@ namespace Application.Interfaces
         /// <summary>
         /// Returns the unit-range float for the given cell and seed.
         /// </summary>
-        /// <param name="cell">The cell the value is from</param>
+        /// <param name="integerPoint">The cell the value is from</param>
         /// <returns>A unit-range float [0-1]</returns>
-        public float UnitFloat(Cell cell);
+        public float UnitFloat(IntegerPoint integerPoint);
 
         /// <summary>
         /// Returns a progressively-changing unit float; the sequence is always the same for the same seed.

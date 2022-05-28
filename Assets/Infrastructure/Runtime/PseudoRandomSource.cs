@@ -83,9 +83,9 @@ namespace Infrastructure.Runtime
             return dy;
         }
 
-        public float UnitFloat(Cell cell)
+        public float UnitFloat(IntegerPoint integerPoint)
         {
-            return UnitFloat(cell.x, cell.y);
+            return UnitFloat(integerPoint.X, integerPoint.Y);
         }
 
         public float NextUnitFloat()
