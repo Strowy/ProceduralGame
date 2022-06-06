@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Infrastructure.Runtime
 {
-    public class PerlinNoiseGenerator : Dependent
+    public class PerlinNoiseGenerator : Dependent, IHeightSource
     {
         private readonly int[,] _gradient = {
         {1,1,0}, {-1,1,0}, {1,-1,0}, {-1,-1,0},
@@ -30,7 +30,12 @@ namespace Infrastructure.Runtime
             _persistence = 0.5f;
         }
 
-        public float Perlin2D(int x, int y)
+        public float GetUnitHeight(int x, int y)
+        {
+            return Perlin2D(x, y);
+        }
+
+        private float Perlin2D(int x, int y)
         {
             var valueSum = 0f;
             var freq = 1;

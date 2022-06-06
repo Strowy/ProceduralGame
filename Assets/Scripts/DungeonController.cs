@@ -1,7 +1,6 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Application.Interfaces;
+﻿using Application.Interfaces;
 using Domain;
+using Infrastructure.Runtime.Dungeon.Generators;
 using UnityEngine;
 
 public class DungeonController : MonoBehaviour
