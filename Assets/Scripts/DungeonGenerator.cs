@@ -1,8 +1,6 @@
 using System;
 using AIR.Flume;using Application.Interfaces;
 using Domain;
-using Infrastructure.Runtime;
-using UnityEngine;
 
 public class DungeonGenerator : Dependent, IDungeonGenerator
 {
@@ -10,11 +8,6 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
 
     private IValueSourceService _valueSourceService;
     private IValueSource _valueSource;
-
-    // Map values
-    private IntegerPoint _dims;
-
-    private int[] map;
 
     // Max room size : max 2 * rSize + 1
     private readonly int rSize;
@@ -28,8 +21,6 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
     // Constructor
     public DungeonGenerator(int width, int height, int comp, int roomSize, int minTunnel, int maxTunnel)
     {
-        _dims = new IntegerPoint(width, height);
-        map = new int[_dims.X * _dims.Y];
         complexity = comp;
         rSize = roomSize;
         tSize = new int[2] { minTunnel, maxTunnel };
@@ -57,7 +48,7 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
     //  Generates pseudo-randomly from an (x,y) input
     public void Generate(int x, int y)
     {
-        Array.Clear(map, 0, map.Length);
+        Map.Clear();
 
         IntegerPoint point, dir, size, bounds;
         int len;
@@ -66,7 +57,7 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
         int tickCounter, failCounter, failsPerTick;
 
         // Generate seed room
-        point = _dims / 2;
+        point = Map.Bounds.Dims / 2;
         bounds = point / 2;
         size = new IntegerPoint(_valueSource.RandInt(rSize) + 1, _valueSource.RandInt(rSize) + 1);
 
@@ -84,7 +75,7 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
             do
             {
                 point = SelectRandomPoint();
-            } while (map[point.X + point.Y * _dims.X] != 1);
+            } while (Map.GetValue(point) != 1);
 
             // Test for valid adjacent wall
             dir = TestForValidWall(point);
@@ -146,47 +137,42 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
             {
                 point = SelectBoundedRandomPoint(pos, bounds - 1);
                 n++;
-            } while ((map[point.X + point.Y * _dims.X] != 1 || !(TestForValidAccess(point))) && n < 1000);
+            } while ((Map.GetValue(point) != 1 || !(TestForValidAccess(point))) && n < 1000);
 
             if (n >= 1000)
             {
                 do
                 {
-                    point = SelectBoundedRandomPoint(pos, _dims - 2);
-                } while (map[point.X + point.Y * _dims.X] != 1 || !(TestForValidAccess(point)));
+                    point = SelectBoundedRandomPoint(pos, Map.Bounds.Dims - 2);
+                } while (Map.GetValue(point) != 1 || !(TestForValidAccess(point)));
             }
 
             CreateAccessPoint(point, i);
         }
 
         // Cleanup map and wallbound walkable areas
-        for (int i = 0; i < _dims.X * _dims.Y; i++)
+        for (var i = 0; i < Map.Cells.Length; i++)
         {
-            if (map[i] == 2)
+            if (Map.Cells[i] == 2)
             {
-                map[i] = 1;
+                Map.Cells[i] = 1;
             }
         }
 
-        for (int i = 0; i < _dims.X; i++)
+        for (int i = 0; i < Map.Bounds.Dims.X; i++)
         {
-            for (int j = 0; j < _dims.Y; j++)
+            for (int j = 0; j < Map.Bounds.Dims.Y; j++)
             {
-                if (map[i + j * _dims.X] == 0)
+                if (Map.Cells[i + j * Map.Bounds.Dims.X] == 0)
                 {
                     var p = new IntegerPoint(i, j);
                     if (CheckConstruct(p) == true)
                     {
-                        map[i + j * _dims.X] = 2;
+                        Map.Cells[i + j * Map.Bounds.Dims.X] = 2;
                     }
                 }
             }
         }
-    }
-
-    public int GetMapVal(int x, int y)
-    {
-        return map[x + y * _dims.X];
     }
 
     // Construct a wall if any of near neighbours is a room/tunnel space
@@ -204,9 +190,9 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
             int tx = pos.X + dir[i, 0];
             int ty = pos.Y + dir[i, 1];
             // If out of bounds, do not count
-            if (!(tx < 0 || tx >= _dims.X || ty < 0 || ty >= _dims.Y))
+            if (!(tx < 0 || tx >= Map.Bounds.Dims.X || ty < 0 || ty >= Map.Bounds.Dims.Y))
             {
-                if (map[tx + ty * _dims.X] == 1)
+                if (Map.Cells[tx + ty * Map.Bounds.Dims.X] == 1)
                 {
                     k++;
                 }
@@ -239,9 +225,9 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
             int tx = pos.X + dir[i, 0];
             int ty = pos.Y + dir[i, 1];
             // If out of bounds, failure and considered a room
-            if (!(tx < 0 || tx >= _dims.X || ty < 0 || ty >= _dims.Y))
+            if (!(tx < 0 || tx >= Map.Bounds.Dims.X || ty < 0 || ty >= Map.Bounds.Dims.Y))
             {
-                if (map[tx + ty * _dims.X] != 1)
+                if (Map.Cells[tx + ty * Map.Bounds.Dims.X] != 1)
                 {
                     k++;
                 }
@@ -264,11 +250,11 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
     {
         if (chk == 0)
         {
-            map[pos.X + pos.Y * _dims.X] = 3;
+            Map.Cells[pos.X + pos.Y * Map.Bounds.Dims.X] = 3;
         }
         else
         {
-            map[pos.X + pos.Y * _dims.X] = 4;
+            Map.Cells[pos.X + pos.Y * Map.Bounds.Dims.X] = 4;
         }
     }
 
@@ -280,7 +266,7 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
         {
             for (int j = pos.Y - size.Y; j <= pos.Y + size.Y; j++)
             {
-                map[i + j * _dims.X] = 1;
+                Map.Cells[i + j * Map.Bounds.Dims.X] = 1;
             }
         }
     }
@@ -290,7 +276,7 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
     {
         for (int i = 0; i < len; i++)
         {
-            map[(pos.X + dir.X * i) + (pos.Y + dir.Y * i) * _dims.X] = 2;
+            Map.Cells[(pos.X + dir.X * i) + (pos.Y + dir.Y * i) * Map.Bounds.Dims.X] = 2;
         }
     }
 
@@ -307,12 +293,12 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
                 _valueSource.RandInt(2 * bounds.X + 1) + (pos.X - bounds.X),
                 _valueSource.RandInt(2 * bounds.Y + 1) + (pos.Y - bounds.Y));
             n++;
-        } while ((point.X < 2 || point.X > _dims.X - 3 || point.Y < 2 || point.Y > _dims.Y - 3) && n < 1000);
+        } while ((point.X < 2 || point.X > Map.Bounds.Dims.X - 3 || point.Y < 2 || point.Y > Map.Bounds.Dims.Y - 3) && n < 1000);
 
         // Assign centre of map as default if broken due to loop count
         if (n >= 1000)
         {
-            point = _dims / 2;
+            point = Map.Bounds.Dims / 2;
         }
 
         return point;
@@ -322,8 +308,8 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
     private IntegerPoint SelectRandomPoint()
     {
         return new IntegerPoint(
-            _valueSource.RandInt(_dims.X - 4) + 2,
-            _valueSource.RandInt(_dims.Y - 4) + 2);
+            _valueSource.RandInt(Map.Bounds.Dims.X - 4) + 2,
+            _valueSource.RandInt(Map.Bounds.Dims.Y - 4) + 2);
     }
 
     // Test for valid access point (entrance / exit)
@@ -341,7 +327,7 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
             int ty = pos.Y + dir[i, 1];
 
             // If any space is not floor, it's a failure
-            if (map[tx + ty * _dims.X] != 1)
+            if (Map.Cells[tx + ty * Map.Bounds.Dims.X] != 1)
             {
                 t = true;
             }
@@ -401,9 +387,9 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
             int ty = pos.Y + dir.Y * i;
 
             // Check buffer
-            if (!(tx < 2 || tx > _dims.X - 3 || ty < 2 || ty > _dims.Y - 3))
+            if (!(tx < 2 || tx > Map.Bounds.Dims.X - 3 || ty < 2 || ty > Map.Bounds.Dims.Y - 3))
             {
-                if (map[tx + ty * _dims.X] != 0)
+                if (Map.Cells[tx + ty * Map.Bounds.Dims.X] != 0)
                 {
                     t = false;
                 }
@@ -455,10 +441,10 @@ public class DungeonGenerator : Dependent, IDungeonGenerator
             int tx = pos.X + dir[i, 0];
             int ty = pos.Y + dir[i, 1];
             // if wall, check adjacent spaces are also walls - if so, space is valid wall
-            if (map[tx + ty * _dims.X] == 0)
+            if (Map.Cells[tx + ty * Map.Bounds.Dims.X] == 0)
             {
-                if (map[(tx + dir[i, 1]) + (ty + dir[i, 0]) * _dims.X] == 0 &&
-                    map[(tx - dir[i, 1]) + (ty - dir[i, 0]) * _dims.X] == 0)
+                if (Map.Cells[(tx + dir[i, 1]) + (ty + dir[i, 0]) * Map.Bounds.Dims.X] == 0 &&
+                    Map.Cells[(tx - dir[i, 1]) + (ty - dir[i, 0]) * Map.Bounds.Dims.X] == 0)
                 {
                     val = new IntegerPoint(dir[i, 0], dir[i, 1]);
                     t = true;

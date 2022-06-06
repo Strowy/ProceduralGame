@@ -10,6 +10,7 @@ namespace Domain
         public int MinY { get; }
         public int Height => (MaxY - MinY) + 1;
         public int Width => (MaxX - MinX) + 1;
+        public IntegerPoint Dims => new IntegerPoint(Width, Height);
 
         public RectBounds(int minX, int minY, int maxX, int maxY)
         {

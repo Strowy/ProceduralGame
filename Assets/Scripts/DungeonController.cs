@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using Application.Interfaces;
 using Domain;
 using UnityEngine;
 
@@ -33,7 +34,7 @@ public class DungeonController : MonoBehaviour
     private int baseX, baseY, seedX, seedY;
 
     // Generator
-    private DungeonGenerator dungeonMap;
+    private IDungeonGenerator dungeonMap;
     // Chunk transform (all terrain objects stored within)
     private Transform dungeonChunk;
     
@@ -97,16 +98,16 @@ public class DungeonController : MonoBehaviour
         dungeonMap.Generate(new IntegerPoint(seedX, seedY));
 
         // Generate the dungeon cells
-        for (int i = 0; i < dungeonX; i++)
+        for (int i = 0; i <= dungeonX; i++)
         {
-            for (int j = 0; j < dungeonY; j++)
+            for (int j = 0; j <= dungeonY; j++)
             {
                 // Calculate x,z (z = y in 2D space) offset and position
                 float xPos = (cellSize * (i - 0.5f * dungeonX) + cellSize * 0.5f) + this.transform.position.x;
                 float zPos = (cellSize * (j - 0.5f * dungeonY) + cellSize * 0.5f) + this.transform.position.z;
                 float yPos;
 
-                select = dungeonMap.GetMapVal(i, j);
+                select = dungeonMap.Map.Cells[i + j * dungeonMap.Map.Bounds.Width];
 
                 // Instantiate cells with type values greater than 0
                 if (select > 0)
