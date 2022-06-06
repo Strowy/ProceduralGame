@@ -1,3 +1,4 @@
+using System;
 using Application.Interfaces;
 using Domain;
 
@@ -92,6 +93,17 @@ namespace Infrastructure.Runtime
         {
             _progressiveValue = (_progressiveValue + 1) % 1048576;
             return UnitFloat(_progressiveValue);
+        }
+
+        public int RandInt(int maxVal)
+        {
+            return (int) Math.Floor((maxVal + 1) * NextUnitFloat());
+        }
+
+        public int RandInt(int minVal, int maxVal)
+        {
+            var diff = maxVal - minVal + 1;
+            return (int) Math.Floor(minVal + diff * NextUnitFloat());
         }
 
         private static int Mod(int a, int b) => a < 0 ? (a % b + b) % b : a % b;

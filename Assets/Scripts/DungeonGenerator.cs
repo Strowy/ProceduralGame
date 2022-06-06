@@ -1,9 +1,18 @@
+using System;
+using AIR.Flume;using Application.Interfaces;
+using Domain;
+using Infrastructure.Runtime;
 using UnityEngine;
 
-public class DungeonGenerator
+public class DungeonGenerator : Dependent, IDungeonGenerator
 {
+    public DungeonMap Map { get; }
+
+    private IValueSourceService _valueSourceService;
+    private IValueSource _valueSource;
+
     // Map values
-    private Tuple dims;
+    private IntegerPoint _dims;
 
     private int[] map;
 
@@ -13,48 +22,53 @@ public class DungeonGenerator
     // Max tunnel size : range tSize[0] to tSize[0] + tSize[2]
     private readonly int[] tSize;
 
-    // Pseudo-random generator
-    private PseudoRandomGenerator rng;
-
     // Complexity - essentially the number of attempts made to dig new tunnels/rooms
     private readonly int complexity;
 
     // Constructor
     public DungeonGenerator(int width, int height, int comp, int roomSize, int minTunnel, int maxTunnel)
     {
-        dims.x = width;
-        dims.y = height;
-        map = new int[dims.x * dims.y];
+        _dims = new IntegerPoint(width, height);
+        map = new int[_dims.X * _dims.Y];
         complexity = comp;
         rSize = roomSize;
         tSize = new int[2] { minTunnel, maxTunnel };
+
+        Map = new DungeonMap(0, 0, width, height);
+    }
+
+    public void Inject(IValueSourceService valueSourceService)
+    {
+        _valueSourceService = valueSourceService;
+    }
+
+    public void Generate(IntegerPoint entrancePosition)
+    {
+        _valueSource = _valueSourceService.GetNewValueSource(SeedFromPosition(entrancePosition));
+        Generate(entrancePosition.X, entrancePosition.Y);
+    }
+
+    private static int SeedFromPosition(IntegerPoint position)
+    {
+        return Math.Abs(position.X * (position.Y + 13)) % 16384;
     }
 
     // Main generation function: overwrites this.map with a new map
     //  Generates pseudo-randomly from an (x,y) input
     public void Generate(int x, int y)
     {
-        Tuple point, dir, size, bounds;
+        Array.Clear(map, 0, map.Length);
+
+        IntegerPoint point, dir, size, bounds;
         int len;
 
         // Generation process counters
         int tickCounter, failCounter, failsPerTick;
 
-        // Clear the map
-        for (int i = 0; i < (dims.x * dims.y); i++)
-        {
-            map[i] = 0;
-        }
-
-        // Get prng (seed based on dungeon location in world). Bounded seed in range 0:2^14-1
-        rng = new PseudoRandomGenerator(Mathf.Abs(x * (y + 13)) % 16384);
-
         // Generate seed room
-        point = dims / 2;
+        point = _dims / 2;
         bounds = point / 2;
-
-        size.x = rng.RandInt(rSize) + 1;
-        size.y = rng.RandInt(rSize) + 1;
+        size = new IntegerPoint(_valueSource.RandInt(rSize) + 1, _valueSource.RandInt(rSize) + 1);
 
         point = SelectBoundedRandomPoint(point, bounds);
         CreateRoom(point, size);
@@ -70,18 +84,18 @@ public class DungeonGenerator
             do
             {
                 point = SelectRandomPoint();
-            } while (map[point.x + point.y * dims.x] != 1);
+            } while (map[point.X + point.Y * _dims.X] != 1);
 
             // Test for valid adjacent wall
             dir = TestForValidWall(point);
             // On fail increment fail count, else attempt tunnel generation
-            if (dir.x == 0 && dir.y == 0)
+            if (dir.X == 0 && dir.Y == 0)
             {
                 failCounter++;
             }
             else
             {
-                len = rng.RandInt(tSize[1] + 1) + tSize[0];
+                len = _valueSource.RandInt(tSize[1] + 1) + tSize[0];
                 // On creation fail increment fail count, else attempt room generation
                 if (!TestForValidTunnel(point + dir, dir, len))
                 {
@@ -89,8 +103,7 @@ public class DungeonGenerator
                 }
                 else
                 {
-                    size.x = rng.RandInt(rSize) + 1;
-                    size.y = rng.RandInt(rSize) + 1;
+                    size = new IntegerPoint(_valueSource.RandInt(rSize) + 1, _valueSource.RandInt(rSize) + 1);
                     // On creation fail increment fail count, else increment success and finish creation
                     if (!TestForValidRoom(point + dir * len, size))
                     {
@@ -115,40 +128,39 @@ public class DungeonGenerator
         } while (tickCounter < complexity);
 
         // Find and create access points
-        int select = rng.RandInt(4);
+        int select = _valueSource.RandInt(4);
         int[,] quad = new int[4, 2]
         {
-            { bounds.x, bounds.y }, { bounds.x * 3, bounds.y }, { bounds.x, bounds.y * 3 },
-            { bounds.x * 3, bounds.y * 3 }
+            { bounds.X, bounds.Y }, { bounds.X * 3, bounds.Y }, { bounds.X, bounds.Y * 3 },
+            { bounds.X * 3, bounds.Y * 3 }
         };
-        Tuple pos;
+        IntegerPoint pos;
         for (int i = 0; i < 2; i++)
         {
             // Switch to try to keep entrance / exit as far from each other as possible
             select = 3 - select;
-            pos.x = quad[select, 0];
-            pos.y = quad[select, 1];
+            pos = new IntegerPoint(quad[select, 0], quad[select, 1]);
 
             int n = 0;
             do
             {
                 point = SelectBoundedRandomPoint(pos, bounds - 1);
                 n++;
-            } while ((map[point.x + point.y * dims.x] != 1 || !(TestForValidAccess(point))) && n < 1000);
+            } while ((map[point.X + point.Y * _dims.X] != 1 || !(TestForValidAccess(point))) && n < 1000);
 
             if (n >= 1000)
             {
                 do
                 {
-                    point = SelectBoundedRandomPoint(pos, dims - 2);
-                } while (map[point.x + point.y * dims.x] != 1 || !(TestForValidAccess(point)));
+                    point = SelectBoundedRandomPoint(pos, _dims - 2);
+                } while (map[point.X + point.Y * _dims.X] != 1 || !(TestForValidAccess(point)));
             }
 
             CreateAccessPoint(point, i);
         }
 
         // Cleanup map and wallbound walkable areas
-        for (int i = 0; i < dims.x * dims.y; i++)
+        for (int i = 0; i < _dims.X * _dims.Y; i++)
         {
             if (map[i] == 2)
             {
@@ -156,18 +168,16 @@ public class DungeonGenerator
             }
         }
 
-        for (int i = 0; i < dims.x; i++)
+        for (int i = 0; i < _dims.X; i++)
         {
-            for (int j = 0; j < dims.y; j++)
+            for (int j = 0; j < _dims.Y; j++)
             {
-                if (map[i + j * dims.x] == 0)
+                if (map[i + j * _dims.X] == 0)
                 {
-                    Tuple p;
-                    p.x = i;
-                    p.y = j;
+                    var p = new IntegerPoint(i, j);
                     if (CheckConstruct(p) == true)
                     {
-                        map[i + j * dims.x] = 2;
+                        map[i + j * _dims.X] = 2;
                     }
                 }
             }
@@ -176,11 +186,11 @@ public class DungeonGenerator
 
     public int GetMapVal(int x, int y)
     {
-        return map[x + y * dims.x];
+        return map[x + y * _dims.X];
     }
 
     // Construct a wall if any of near neighbours is a room/tunnel space
-    private bool CheckConstruct(Tuple pos)
+    private bool CheckConstruct(IntegerPoint pos)
     {
         int k;
         // Map of checked spaces
@@ -191,12 +201,12 @@ public class DungeonGenerator
         // Go through near neighbours, counting all spaces that are walkable
         for (int i = 0; i < dir.GetLength(0); i++)
         {
-            int tx = pos.x + dir[i, 0];
-            int ty = pos.y + dir[i, 1];
+            int tx = pos.X + dir[i, 0];
+            int ty = pos.Y + dir[i, 1];
             // If out of bounds, do not count
-            if (!(tx < 0 || tx >= dims.x || ty < 0 || ty >= dims.y))
+            if (!(tx < 0 || tx >= _dims.X || ty < 0 || ty >= _dims.Y))
             {
-                if (map[tx + ty * dims.x] == 1)
+                if (map[tx + ty * _dims.X] == 1)
                 {
                     k++;
                 }
@@ -215,7 +225,7 @@ public class DungeonGenerator
     }
 
     // Check surrounding 8 spaces of given position
-    private bool CheckNearNeighbours(Tuple pos)
+    private bool CheckNearNeighbours(IntegerPoint pos)
     {
         int k;
         // Map of checked spaces
@@ -226,12 +236,12 @@ public class DungeonGenerator
         // Go through near neighbours, counting all spaces that are not rooms
         for (int i = 0; i < dir.GetLength(0); i++)
         {
-            int tx = pos.x + dir[i, 0];
-            int ty = pos.y + dir[i, 1];
+            int tx = pos.X + dir[i, 0];
+            int ty = pos.Y + dir[i, 1];
             // If out of bounds, failure and considered a room
-            if (!(tx < 0 || tx >= dims.x || ty < 0 || ty >= dims.y))
+            if (!(tx < 0 || tx >= _dims.X || ty < 0 || ty >= _dims.Y))
             {
-                if (map[tx + ty * dims.x] != 1)
+                if (map[tx + ty * _dims.X] != 1)
                 {
                     k++;
                 }
@@ -250,75 +260,74 @@ public class DungeonGenerator
     }
 
     // Creates access point : Entrance (3) if chk is 0, else Exit (4)
-    private void CreateAccessPoint(Tuple pos, int chk)
+    private void CreateAccessPoint(IntegerPoint pos, int chk)
     {
         if (chk == 0)
         {
-            map[pos.x + pos.y * dims.x] = 3;
+            map[pos.X + pos.Y * _dims.X] = 3;
         }
         else
         {
-            map[pos.x + pos.y * dims.x] = 4;
+            map[pos.X + pos.Y * _dims.X] = 4;
         }
     }
 
     // Creates a room centred on position with given size
     //  size = ([size of room] - 1) / 2: all rooms are of odd size in both dimensions
-    private void CreateRoom(Tuple pos, Tuple size)
+    private void CreateRoom(IntegerPoint pos, IntegerPoint size)
     {
-        for (int i = pos.x - size.x; i <= pos.x + size.x; i++)
+        for (int i = pos.X - size.X; i <= pos.X + size.X; i++)
         {
-            for (int j = pos.y - size.y; j <= pos.y + size.y; j++)
+            for (int j = pos.Y - size.Y; j <= pos.Y + size.Y; j++)
             {
-                map[i + j * dims.x] = 1;
+                map[i + j * _dims.X] = 1;
             }
         }
     }
 
     // Creates a tunnel (1 width, len length) at given position in given direction
-    private void CreateTunnel(Tuple pos, Tuple dir, int len)
+    private void CreateTunnel(IntegerPoint pos, IntegerPoint dir, int len)
     {
         for (int i = 0; i < len; i++)
         {
-            map[(pos.x + dir.x * i) + (pos.y + dir.y * i) * dims.x] = 2;
+            map[(pos.X + dir.X * i) + (pos.Y + dir.Y * i) * _dims.X] = 2;
         }
     }
 
     // Select random point on map within bounded range of a given point with edge buffer
-    private Tuple SelectBoundedRandomPoint(Tuple pos, Tuple bounds)
+    private IntegerPoint SelectBoundedRandomPoint(IntegerPoint pos, IntegerPoint bounds)
     {
-        Tuple point;
+        IntegerPoint point;
 
         // Buffer the point, but prevent inf. loop by poor bounding or position
         int n = 0;
         do
         {
-            point.x = rng.RandInt(2 * bounds.x + 1) + (pos.x - bounds.x);
-            point.y = rng.RandInt(2 * bounds.y + 1) + (pos.y - bounds.y);
+            point = new IntegerPoint(
+                _valueSource.RandInt(2 * bounds.X + 1) + (pos.X - bounds.X),
+                _valueSource.RandInt(2 * bounds.Y + 1) + (pos.Y - bounds.Y));
             n++;
-        } while ((point.x < 2 || point.x > dims.x - 3 || point.y < 2 || point.y > dims.y - 3) && n < 1000);
+        } while ((point.X < 2 || point.X > _dims.X - 3 || point.Y < 2 || point.Y > _dims.Y - 3) && n < 1000);
 
         // Assign centre of map as default if broken due to loop count
         if (n >= 1000)
         {
-            point = dims / 2;
+            point = _dims / 2;
         }
 
         return point;
     }
 
     // Select random point on the map with 2 point edge buffer
-    private Tuple SelectRandomPoint()
+    private IntegerPoint SelectRandomPoint()
     {
-        Tuple point;
-        point.x = rng.RandInt(dims.x - 4) + 2;
-        point.y = rng.RandInt(dims.y - 4) + 2;
-
-        return point;
+        return new IntegerPoint(
+            _valueSource.RandInt(_dims.X - 4) + 2,
+            _valueSource.RandInt(_dims.Y - 4) + 2);
     }
 
     // Test for valid access point (entrance / exit)
-    private bool TestForValidAccess(Tuple pos)
+    private bool TestForValidAccess(IntegerPoint pos)
     {
         // Only the four cardinal directions are necessary as there are no concave rooms
         int[,] dir = new int[4, 2] { { -1, 0 }, { 0, -1 }, { 1, 0 }, { 0, 1 } };
@@ -328,11 +337,11 @@ public class DungeonGenerator
         // floor test
         while (i < 4 && !t)
         {
-            int tx = pos.x + dir[i, 0];
-            int ty = pos.y + dir[i, 1];
+            int tx = pos.X + dir[i, 0];
+            int ty = pos.Y + dir[i, 1];
 
             // If any space is not floor, it's a failure
-            if (map[tx + ty * dims.x] != 1)
+            if (map[tx + ty * _dims.X] != 1)
             {
                 t = true;
             }
@@ -352,7 +361,7 @@ public class DungeonGenerator
     }
 
     // Test for valid room centered on position with given size
-    private bool TestForValidRoom(Tuple pos, Tuple size)
+    private bool TestForValidRoom(IntegerPoint pos, IntegerPoint size)
     {
         int k;
         // Map of the checked spaces
@@ -363,9 +372,7 @@ public class DungeonGenerator
         // Check the 9 points (corners, midpoints, centre)
         for (int i = 0; i < dir.GetLength(0); i++)
         {
-            Tuple t;
-            t.x = pos.x + dir[i, 0] * size.x;
-            t.y = pos.y + dir[i, 1] * size.y;
+            var t = new IntegerPoint(pos.X + dir[i, 0] * size.X, pos.Y + dir[i, 1] * size.Y);
             if (!CheckNearNeighbours(t))
             {
                 k++;
@@ -384,19 +391,19 @@ public class DungeonGenerator
     }
 
     // Test for valid tunnel starting at position in direction with given length
-    private bool TestForValidTunnel(Tuple pos, Tuple dir, int len)
+    private bool TestForValidTunnel(IntegerPoint pos, IntegerPoint dir, int len)
     {
         bool t = true;
         // Check the planned space is entirely filled in
         for (int i = 0; i < len; i++)
         {
-            int tx = pos.x + dir.x * i;
-            int ty = pos.y + dir.y * i;
+            int tx = pos.X + dir.X * i;
+            int ty = pos.Y + dir.Y * i;
 
             // Check buffer
-            if (!(tx < 2 || tx > dims.x - 3 || ty < 2 || ty > dims.y - 3))
+            if (!(tx < 2 || tx > _dims.X - 3 || ty < 2 || ty > _dims.Y - 3))
             {
-                if (map[tx + ty * dims.x] != 0)
+                if (map[tx + ty * _dims.X] != 0)
                 {
                     t = false;
                 }
@@ -410,22 +417,20 @@ public class DungeonGenerator
         return t;
     }
 
-    private Tuple TestForValidWall(Tuple pos)
+    private IntegerPoint TestForValidWall(IntegerPoint pos)
     {
-        Tuple val;
-        val.x = 0;
-        val.y = 0;
+        var val = IntegerPoint.Zero;
 
         // The 4 spaces left, up, right, down are the relevant spaces to test
         //  however if not searched in randomized order, causes a directional bias in room generation
         int[,] dir = new int[4, 2] { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } };
 
         // Get (x,y) being -1 or 1, and another int to determine order, then generate test array
-        int rx = rng.RandInt(2);
+        int rx = _valueSource.RandInt(2);
         rx = (rx == 0) ? -1 : 1;
-        int ry = rng.RandInt(2);
+        int ry = _valueSource.RandInt(2);
         ry = (ry == 0) ? -1 : 1;
-        int ro = rng.RandInt(2);
+        int ro = _valueSource.RandInt(2);
 
         if (ro == 0)
         {
@@ -447,16 +452,15 @@ public class DungeonGenerator
         // Wall test
         while (i < 4 && !t)
         {
-            int tx = pos.x + dir[i, 0];
-            int ty = pos.y + dir[i, 1];
+            int tx = pos.X + dir[i, 0];
+            int ty = pos.Y + dir[i, 1];
             // if wall, check adjacent spaces are also walls - if so, space is valid wall
-            if (map[tx + ty * dims.x] == 0)
+            if (map[tx + ty * _dims.X] == 0)
             {
-                if (map[(tx + dir[i, 1]) + (ty + dir[i, 0]) * dims.x] == 0 &&
-                    map[(tx - dir[i, 1]) + (ty - dir[i, 0]) * dims.x] == 0)
+                if (map[(tx + dir[i, 1]) + (ty + dir[i, 0]) * _dims.X] == 0 &&
+                    map[(tx - dir[i, 1]) + (ty - dir[i, 0]) * _dims.X] == 0)
                 {
-                    val.x = dir[i, 0];
-                    val.y = dir[i, 1];
+                    val = new IntegerPoint(dir[i, 0], dir[i, 1]);
                     t = true;
                 }
             }
@@ -467,53 +471,9 @@ public class DungeonGenerator
         // If i = 4 no valid walls were found
         if (i == 4)
         {
-            val.x = 0;
-            val.y = 0;
+            val = IntegerPoint.Zero;
         }
 
         return val;
-    }
-
-    // Tuple
-    struct Tuple
-    {
-        public int x;
-        public int y;
-
-        public static Tuple operator +(Tuple a, Tuple b)
-        {
-            Tuple c;
-            c.x = a.x + b.x;
-            c.y = a.y + b.y;
-
-            return c;
-        }
-
-        public static Tuple operator -(Tuple a, int b)
-        {
-            Tuple c;
-            c.x = a.x - b;
-            c.y = a.y - b;
-
-            return c;
-        }
-
-        public static Tuple operator *(Tuple a, int b)
-        {
-            Tuple c;
-            c.x = a.x * b;
-            c.y = a.y * b;
-
-            return c;
-        }
-
-        public static Tuple operator /(Tuple a, int b)
-        {
-            Tuple c;
-            c.x = a.x / b;
-            c.y = a.y / b;
-
-            return c;
-        }
     }
 }

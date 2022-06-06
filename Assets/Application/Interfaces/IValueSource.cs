@@ -37,5 +37,20 @@ namespace Application.Interfaces
         /// </summary>
         /// <returns>A float in the range [0, 1]</returns>
         public float NextUnitFloat();
+
+        /// <summary>
+        /// Returns a progressively-changing integer in the range [0, maxVal]
+        /// </summary>
+        /// <param name="maxVal"></param>
+        /// <returns></returns>
+        public int RandInt(int maxVal);
+
+        /// <summary>
+        /// Returns a progressively-changing integer in the range [minVal, maxVal]
+        /// </summary>
+        /// <param name="minVal"></param>
+        /// <param name="maxVal"></param>
+        /// <returns></returns>
+        public int RandInt(int minVal, int maxVal);
     }
 }

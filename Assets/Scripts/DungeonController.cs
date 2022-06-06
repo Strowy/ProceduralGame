@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using Domain;
 using UnityEngine;
 
 public class DungeonController : MonoBehaviour
@@ -93,7 +94,7 @@ public class DungeonController : MonoBehaviour
         dungeonChunk.parent = this.transform;
 
         // Create floor map in generator
-        dungeonMap.Generate(seedX, seedY);
+        dungeonMap.Generate(new IntegerPoint(seedX, seedY));
 
         // Generate the dungeon cells
         for (int i = 0; i < dungeonX; i++)

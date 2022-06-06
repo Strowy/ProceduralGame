@@ -14,6 +14,8 @@ namespace Domain
             Cells = new int[Bounds.Width * Bounds.Height];
         }
 
+        public void Clear() => Array.Clear(Cells, 0, Cells.Length);
+
         public IEnumerable<IntegerPoint> MapCells()
         {
             for (var x = Bounds.MinX; x < Bounds.MaxX + 1; x++)
