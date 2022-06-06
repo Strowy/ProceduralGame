@@ -1,8 +1,8 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using AIR.Flume;
+using Application.Interfaces;
 using UnityEngine;
 
-public class TerrainController : MonoBehaviour
+public class TerrainController : DependentBehaviour
 {
     // Transform for player character to determine position
     public Transform player;
@@ -31,11 +31,17 @@ public class TerrainController : MonoBehaviour
 
     private bool spawned;
 
+    private ISeedService _seedService;
+
+    public void Inject(ISeedService seedService)
+    {
+        _seedService = seedService;
+    }
+
     // Start is called before the first frame update
     void Start()
     {
-        // Get seed
-        seedValue = GameObject.FindGameObjectWithTag("WorldController").GetComponent<WorldController>().seedValue;
+        seedValue = _seedService.Seed;
 
         // Spawn point information
         spawned = false;
