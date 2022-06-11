@@ -1,0 +1,18 @@
+{
+    "name": "Infrastructure.Runtime",
+    "rootNamespace": "",
+    "references": [
+        "Domain",
+        "Application",
+        "AIR.Flume"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
