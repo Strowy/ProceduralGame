@@ -9,19 +9,20 @@ public class DisplayGameInfo : DependentBehaviour
     public Text seedText;
     public Text floorText;
 
-    private WorldController _wc;
-
     private ISeedService _seedService;
+    private IGameStateController _gameStateController;
 
-    public void Inject(ISeedService seedService)
+    public void Inject(
+        ISeedService seedService,
+        IGameStateController gameStateController)
     {
         _seedService = seedService;
+        _gameStateController = gameStateController;
     }
 
     // Start is called before the first frame update
     public void Start()
     {
-        _wc = GameObject.FindGameObjectWithTag("WorldController").GetComponent<WorldController>();
         scoreText.text = "";
         floorText.text = "";
     }
@@ -29,10 +30,20 @@ public class DisplayGameInfo : DependentBehaviour
     // Update is called once per frame
     public void Update()
     {
-        if (_wc.GetState() > 0)
-            scoreText.text = "Cleared: " + _wc.GetScore();
+        DisplayScore();
+        DisplayDungeonInfo();
+    }
 
-        if (_wc.GetState() == 2)
+    private void DisplayScore()
+    {
+        var status = _gameStateController.Status;
+        if (status == GameStatus.InOverworld || status == GameStatus.InDungeon)
+            scoreText.text = $"Cleared: {_gameStateController.Score}";
+    }
+
+    private void DisplayDungeonInfo()
+    {
+        if (_gameStateController.Status == GameStatus.InDungeon)
         {
             var dc = GameObject
                 .FindGameObjectWithTag("DungeonController")
@@ -48,11 +59,8 @@ public class DisplayGameInfo : DependentBehaviour
     public void StartButtonClick()
     {
         if (!int.TryParse(seedText.text, out var result)) return;
-        // If so, grab seed value and start game
         _seedService.SetSeed(result);
-
-        _wc.seedValue = result;
-        _wc.SetState(0);
+        _gameStateController.SetStatus(GameStatus.Initialise);
 
         // Turn off menu elements
         var obj = GameObject.FindGameObjectsWithTag("Menu");

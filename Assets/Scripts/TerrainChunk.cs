@@ -1,8 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using AIR.Flume;
+using Application.Interfaces;
+using Domain;
 using UnityEngine;
 
-public class TerrainChunk : MonoBehaviour
+public class TerrainChunk : DependentBehaviour
 {
     // Map piece that is instantiated
     public Transform terrainObject;
@@ -18,6 +21,13 @@ public class TerrainChunk : MonoBehaviour
     private int chunkSize;
     private int biomeSize;
     private int maxHeight;
+
+    private IGameStateController _gameStateController;
+
+    public void Inject(IGameStateController gameStateController)
+    {
+        _gameStateController = gameStateController;
+    }
 
     // Start is called before the first frame update
     void Start()
@@ -43,8 +53,8 @@ public class TerrainChunk : MonoBehaviour
             for (int j = 0; j < chunkSize; j++)
             {
                 // Calculate x,z (z = y in 2D space) offset and position
-                float xPos = (cellSize * (i - 0.5f * chunkSize) + cellSize * 0.5f) + this.transform.position.x;
-                float zPos = (cellSize * (j - 0.5f * chunkSize) + cellSize * 0.5f) + this.transform.position.z;
+                var xPos = (int) ((cellSize * (i - 0.5f * chunkSize) + cellSize * 0.5f) + this.transform.position.x);
+                var zPos = (int) ((cellSize * (j - 0.5f * chunkSize) + cellSize * 0.5f) + this.transform.position.z);
 
                 // Get cell data based on position
                 int[] dataCell = mapper.CellData((int)(xPos / cellSize), (int)(zPos / cellSize));
@@ -68,14 +78,10 @@ public class TerrainChunk : MonoBehaviour
                     mCell.GetComponent<MeshRenderer>().material = terrainMaterials[8];
 
                     // Check if the dungeon is on the list of cleared dungeons
-                    if (GameObject.FindGameObjectWithTag("WorldController").GetComponent<WorldController>().CheckCleared((int)xPos, (int)zPos))
-                    {
-                        Object.Instantiate(portal_Dead, new Vector3(xPos, yPos + cellSize * 2, zPos), Quaternion.identity, this.transform);
-                    }
-                    else
-                    {
-                        Object.Instantiate(portal_Active, new Vector3(xPos, yPos + cellSize * 2, zPos), Quaternion.identity, this.transform);
-                    }  
+                    var portalType = _gameStateController.IsClearedDungeonEntrance(new IntegerPoint(xPos, zPos))
+                            ? portal_Dead
+                            : portal_Active;
+                    Instantiate(portalType, new Vector3(xPos, yPos + cellSize * 2, zPos), Quaternion.identity, this.transform);
                 }
                 // If Dungeon Surrounds
                 if (dataCell[2] == 3)

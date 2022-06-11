@@ -1,27 +1,30 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using AIR.Flume;
+using Application.Interfaces;
 using UnityEngine;
 
-public class Portal_World : MonoBehaviour
+public class Portal_World : DependentBehaviour
 {
-    private WorldController wc;
+    private IGameStateController _gameStateController;
+    private IPlayerService _playerService;
 
-    // Start is called before the first frame update
-    void Start()
+    public void Inject(
+        IGameStateController gameStateController,
+        IPlayerService playerService)
     {
-        wc = GameObject.FindGameObjectWithTag("WorldController").GetComponent<WorldController>();
-        this.transform.gameObject.name = this.transform.gameObject.GetInstanceID().ToString();
+        _gameStateController = gameStateController;
+        _playerService = playerService;
     }
 
-    void OnTriggerEnter(Collider other)
+    public void Start()
+    {
+        gameObject.name = GetInstanceID().ToString();
+    }
+
+    public void OnTriggerEnter(Collider other)
     {
         // Player enters portal
-        if (other.gameObject.CompareTag("Player"))
-        {
-            wc.MarkLocation(other.gameObject.transform.position);
-            wc.SetEventLocation(this.transform.position);
-            wc.SetEventFlag(1);
-            wc.SetEventInstance(this.transform.gameObject.name);
-        }
+        if (!other.gameObject.CompareTag("Player")) return;
+        _playerService.MarkLocation(other.gameObject.transform.position);
+        _gameStateController.TriggerEventInstance(gameObject.name, PortalType.Entrance, transform.position);
     }
 }

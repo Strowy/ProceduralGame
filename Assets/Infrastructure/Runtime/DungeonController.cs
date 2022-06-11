@@ -1,9 +1,10 @@
-﻿using Application.Interfaces;
+﻿using AIR.Flume;
+using Application.Interfaces;
 using Domain;
 using Infrastructure.Runtime.Dungeon.Generators;
 using UnityEngine;
 
-public class DungeonController : MonoBehaviour
+public class DungeonController : DependentBehaviour
 {
     // Transform for player character to determine position
     public Transform player;
@@ -36,6 +37,13 @@ public class DungeonController : MonoBehaviour
     private IDungeonGenerator dungeonMap;
     // Chunk transform (all terrain objects stored within)
     private Transform dungeonChunk;
+
+    private IGameStateController _gameStateController;
+
+    public void Inject(IGameStateController gameStateController)
+    {
+        _gameStateController = gameStateController;
+    }
     
     // Start is called before the first frame update
     void Start()
@@ -74,13 +82,18 @@ public class DungeonController : MonoBehaviour
             else
             {
                 // Set flag that goal achieved (reached portal on lowest floor)
-                GameObject.FindGameObjectWithTag("WorldController").GetComponent<WorldController>().SetEventFlag(2);
+                ExitDungeon();
                 // Reset floor count to zero
                 currentFloor = 0;
             }
 
             goalReached = false;
         }
+    }
+
+    private void ExitDungeon()
+    {
+        _gameStateController.TriggerEventInstance("", PortalType.Exit, Vector3.zero);
     }
 
     // Create new dungeon floor

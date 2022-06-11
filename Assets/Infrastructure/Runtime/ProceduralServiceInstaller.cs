@@ -9,7 +9,10 @@ namespace Infrastructure.Runtime
         {
             container
                 .Register<IValueSourceService, PseudoRandomSourceService>()
-                .Register<ISeedService, SeedService>();
+                .Register<ISeedService, SeedService>()
+                .Register<IPlayerService, PlayerService>()
+                .Register<IGameStateController>(FindObjectOfType<WorldController>())
+                ;
         }
     }
 }
