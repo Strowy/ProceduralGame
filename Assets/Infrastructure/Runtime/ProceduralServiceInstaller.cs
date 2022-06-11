@@ -11,7 +11,8 @@ namespace Infrastructure.Runtime
                 .Register<IValueSourceService, PseudoRandomSourceService>()
                 .Register<ISeedService, SeedService>()
                 .Register<IPlayerService, PlayerService>()
-                .Register<IGameStateController>(FindObjectOfType<WorldController>())
+                .Register<IGameStateController>(FindObjectOfType<WorldController>(true))
+                .Register<IDungeonController>(FindObjectOfType<DungeonController>(true))
                 ;
         }
     }

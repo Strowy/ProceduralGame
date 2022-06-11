@@ -1,10 +1,15 @@
 ﻿using AIR.Flume;
 using Application.Interfaces;
+using Infrastructure.Runtime;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class DisplayGameInfo : DependentBehaviour
 {
+    [SerializeField] private RectTransform uStartButton;
+    [SerializeField] private RectTransform uSeedInput;
+    [SerializeField] private GameObject uMenuCamera;
+
     public Text scoreText;
     public Text seedText;
     public Text floorText;
@@ -63,10 +68,8 @@ public class DisplayGameInfo : DependentBehaviour
         _gameStateController.SetStatus(GameStatus.Initialise);
 
         // Turn off menu elements
-        var obj = GameObject.FindGameObjectsWithTag("Menu");
-        foreach (var gObj in obj)
-        {
-            gObj.SetActive(false);
-        }
+        uStartButton.gameObject.SetActive(false);
+        uSeedInput.gameObject.SetActive(false);
+        uMenuCamera.SetActive(false);
     }
 }

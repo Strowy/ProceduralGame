@@ -9,6 +9,8 @@ namespace Infrastructure.Runtime
 
         private Vector3 _markedLocation = Vector3.zero;
 
+        public Vector3 Position => _playerCharacter.position;
+
         public void SetPlayerTransform(Transform playerTransform)
         {
             _playerCharacter = playerTransform;
@@ -27,6 +29,11 @@ namespace Infrastructure.Runtime
         public void SetActive(bool isActive)
         {
             _playerCharacter.gameObject.SetActive(isActive);
+        }
+
+        public void WarpToLocation(Vector3 location)
+        {
+            _playerCharacter.SetPositionAndRotation(location, _playerCharacter.rotation);
         }
     }
 }
