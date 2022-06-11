@@ -1,11 +1,9 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using AIR.Flume;
+using Application.Interfaces;
 using UnityEngine;
 
-public class TerrainController : MonoBehaviour
+public class TerrainController : DependentBehaviour
 {
-    // Transform for player character to determine position
-    public Transform player;
     // Terrain chunk object which is responsible for creating the terrain cells
     public Transform terrainChunk;
     // Pseudo-random generator seed value
@@ -31,18 +29,29 @@ public class TerrainController : MonoBehaviour
 
     private bool spawned;
 
+    private ISeedService _seedService;
+    private IPlayerService _playerService;
+
+    public void Inject(
+        ISeedService seedService,
+        IPlayerService playerService)
+    {
+        _seedService = seedService;
+        _playerService = playerService;
+    }
+
     // Start is called before the first frame update
     void Start()
     {
-        // Get seed
-        seedValue = GameObject.FindGameObjectWithTag("WorldController").GetComponent<WorldController>().seedValue;
+        seedValue = _seedService.Seed;
 
         // Spawn point information
         spawned = false;
         
         // Get initial player position in terms of chunks
-        px = Mathf.FloorToInt((player.position.x + 0.5f * cellSize * chunkSize) / (cellSize * chunkSize));
-        pz = Mathf.FloorToInt((player.position.z + 0.5f * cellSize * chunkSize) / (cellSize * chunkSize));
+        var position = _playerService.Position;
+        px = Mathf.FloorToInt((position.x + 0.5f * cellSize * chunkSize) / (cellSize * chunkSize));
+        pz = Mathf.FloorToInt((position.z + 0.5f * cellSize * chunkSize) / (cellSize * chunkSize));
 
         // Initial terrain production
         for (int i = -renderRange; i < renderRange+1; i++)
@@ -75,16 +84,14 @@ public class TerrainController : MonoBehaviour
             subIndex = (chunkSize * chunkSize / 2) - (chunkSize / 2 + 1);
             subChild = spawnChild.GetChild(subIndex);
             // Set player position
-            player.GetComponent<CharacterController>().enabled = false;
-            player.transform.SetPositionAndRotation(new Vector3(subChild.position.x, subChild.position.y + cellSize + 4, subChild.position.z), Quaternion.identity);
-            player.GetComponent<CharacterController>().enabled = true;
+            _playerService.WarpToLocation(new Vector3(subChild.position.x, subChild.position.y + cellSize + 4, subChild.position.z));
 
             spawned = true;
         }
         
-        
-        dx = Mathf.FloorToInt((player.position.x + 0.5f * cellSize * chunkSize) / (cellSize * chunkSize));
-        dz = Mathf.FloorToInt((player.position.z + 0.5f * cellSize * chunkSize) / (cellSize * chunkSize));
+        var position = _playerService.Position;
+        dx = Mathf.FloorToInt((position.x + 0.5f * cellSize * chunkSize) / (cellSize * chunkSize));
+        dz = Mathf.FloorToInt((position.z + 0.5f * cellSize * chunkSize) / (cellSize * chunkSize));
 
         // If player character enters a different terrain chunk, update terrain
         if (dx != px || dz != pz)

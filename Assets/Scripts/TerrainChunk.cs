@@ -1,8 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using AIR.Flume;
+using Application.Interfaces;
+using Domain;
 using UnityEngine;
 
-public class TerrainChunk : MonoBehaviour
+public class TerrainChunk : DependentBehaviour
 {
     // Map piece that is instantiated
     public Transform terrainObject;
@@ -18,6 +21,13 @@ public class TerrainChunk : MonoBehaviour
     private int chunkSize;
     private int biomeSize;
     private int maxHeight;
+
+    private IGameStateController _gameStateController;
+
+    public void Inject(IGameStateController gameStateController)
+    {
+        _gameStateController = gameStateController;
+    }
 
     // Start is called before the first frame update
     void Start()
@@ -43,8 +53,8 @@ public class TerrainChunk : MonoBehaviour
             for (int j = 0; j < chunkSize; j++)
             {
                 // Calculate x,z (z = y in 2D space) offset and position
-                float xPos = (cellSize * (i - 0.5f * chunkSize) + cellSize * 0.5f) + this.transform.position.x;
-                float zPos = (cellSize * (j - 0.5f * chunkSize) + cellSize * 0.5f) + this.transform.position.z;
+                var xPos = (int) ((cellSize * (i - 0.5f * chunkSize) + cellSize * 0.5f) + this.transform.position.x);
+                var zPos = (int) ((cellSize * (j - 0.5f * chunkSize) + cellSize * 0.5f) + this.transform.position.z);
 
                 // Get cell data based on position
                 int[] dataCell = mapper.CellData((int)(xPos / cellSize), (int)(zPos / cellSize));
@@ -68,14 +78,10 @@ public class TerrainChunk : MonoBehaviour
                     mCell.GetComponent<MeshRenderer>().material = terrainMaterials[8];
 
                     // Check if the dungeon is on the list of cleared dungeons
-                    if (GameObject.FindGameObjectWithTag("WorldController").GetComponent<WorldController>().CheckCleared((int)xPos, (int)zPos))
-                    {
-                        Object.Instantiate(portal_Dead, new Vector3(xPos, yPos + cellSize * 2, zPos), Quaternion.identity, this.transform);
-                    }
-                    else
-                    {
-                        Object.Instantiate(portal_Active, new Vector3(xPos, yPos + cellSize * 2, zPos), Quaternion.identity, this.transform);
-                    }  
+                    var portalType = _gameStateController.IsClearedDungeonEntrance(new IntegerPoint(xPos, zPos))
+                            ? portal_Dead
+                            : portal_Active;
+                    Instantiate(portalType, new Vector3(xPos, yPos + cellSize * 2, zPos), Quaternion.identity, this.transform);
                 }
                 // If Dungeon Surrounds
                 if (dataCell[2] == 3)
@@ -91,282 +97,4 @@ public class TerrainChunk : MonoBehaviour
             }
         }
     }
-}
-
-public class MapCellProcessor
-{
-    private readonly int maxHeight;
-    private readonly float[,] terrainModifiers;
-    private readonly int biomeSize;
-
-    private PerlinNoise mapNoise;
-    private PseudoRandomGenerator rNumber;
-    
-
-    public MapCellProcessor(int seed, int mHeight, int bSize)
-    {
-        mapNoise = new PerlinNoise(seed);
-        rNumber = new PseudoRandomGenerator(seed);
-        maxHeight = mHeight;
-        biomeSize = bSize;
-
-        terrainModifiers = new float[8, 3];
-        // Height boundaries of each terrain type
-        terrainModifiers[0, 0] = 0;
-        terrainModifiers[1, 0] = 0.28f;
-        terrainModifiers[2, 0] = 0.30f;
-        terrainModifiers[3, 0] = 0.35f;
-        terrainModifiers[4, 0] = 0.45f;
-        terrainModifiers[5, 0] = 0.65f;
-        terrainModifiers[6, 0] = 0.75f;
-        terrainModifiers[7, 0] = 0.90f;
-        // Height multipliers of each terrain type
-        terrainModifiers[0, 1] = 0;
-        terrainModifiers[1, 1] = 0;
-        terrainModifiers[2, 1] = 0.25f;
-        terrainModifiers[3, 1] = 0.50f;
-        terrainModifiers[4, 1] = 0.25f;
-        terrainModifiers[5, 1] = 1.00f;
-        terrainModifiers[6, 1] = 3.00f;
-        terrainModifiers[7, 1] = 1.00f;
-        // Sum (b - a) * n where a, b are the lower, upper bounds of each terrain type
-        terrainModifiers[0, 2] = 0;
-        for (int i = 1; i < 8; i++) { terrainModifiers[i, 2] = terrainModifiers[i - 1, 1] * (terrainModifiers[i, 0] - terrainModifiers[i - 1, 0]) + terrainModifiers[i - 1, 2]; }
-
-    }
-
-    // Main function to produce map cell information. Returns [height, terrain type, special data]
-    public int[] CellData(int x, int y)
-    {
-        int[] g = new int[4] { 0, 0, 0, 0 };
-        float hVal;
-        int bx, by;
-        Tuple spc;
-        int n = 8; // 8 types of base terrain
-
-        // Biome x, y values
-        bx = Mathf.FloorToInt((float)x / biomeSize);
-        by = Mathf.FloorToInt((float)y / biomeSize);
-
-        // Get noise map value
-        hVal = mapNoise.Perlin2D(x, y);
-
-        // Get terrain type then calculate height and other values from that
-        g[1] = TerrainType(hVal, n);
-        // Special terrain type check
-        spc = SpecialTerrainType(x, y, g[1], bx, by);
-        g[2] = spc.a; g[3] = spc.b;
-        // Terrain height
-        g[0] = TerrainHeight(hVal, g);
-
-        return g;
-    }
-
-    // Test for special types of terrain
-    private Tuple SpecialTerrainType(int x, int y, int tType, int bx, int by)
-    {
-        // Type values:
-        // 1: Water terrain
-        // 2: Dungeon Portal
-        // 3-10: Dungeon Surroundings
-
-
-        Tuple r = new Tuple(0, 0);
-        int dx, dy;
-        int de;
-
-        dx = x - (bx * biomeSize);
-        dy = y - (by * biomeSize);
-
-        // If water terrain
-        if (tType == 0 || tType == 1) { r.a = 1; }
-        
-        // Check for Dungeon Portals (only appear on certain terrain)
-        if (tType == 4)
-        {
-            // Make it so it cannot appear on border cells of biome
-            de = rNumber.IntVal(bx, by, (biomeSize - 4) * (biomeSize - 4));
-            de = (Mod(de, biomeSize - 4) + 2) + (Mathf.FloorToInt((float)de / (biomeSize - 4)) + 2) * biomeSize;
-
-            if (dx + dy * biomeSize == de) { r.a = 2; }
-        }
-        // Check for Dungeon Surroundings
-        if ((tType == 3 || tType == 4 || tType == 5) && (r.a != 2))
-        {
-            int ex, ey;
-
-            // Make it so portal cannot appear on border cells of biome (otherwise walls would cut off)
-            de = rNumber.IntVal(bx, by, (biomeSize - 4) * (biomeSize - 4));
-            de = (Mod(de, biomeSize - 4) + 2) + (Mathf.FloorToInt((float)de / (biomeSize - 4)) + 2) * biomeSize;
-            ex = Mod(de, biomeSize);
-            ey = Mathf.FloorToInt((float)de / biomeSize);
-
-            // Creates a wall in the eight spaces around the dungeon portal
-            if ((Mathf.Abs(dx - ex) < 3) && (Mathf.Abs(dy - ey) < 3))
-            {
-                float hVal = mapNoise.Perlin2D(x - (dx - ex), y - (dy - ey));
-                if (TerrainType(hVal, 8) == 4)
-                {
-                    r.a = 3;
-                    r.b = TerrainHeight(hVal, new int[4] { 0, 4, 2, 0});
-
-                    if (((Mathf.Abs(dx - ex) > 0) && (Mathf.Abs(dy - ey) > 1)) || ((Mathf.Abs(dx - ex) > 1) && (Mathf.Abs(dy - ey) > 0)))
-                    {
-                        r.a = 4;
-                    }
-
-                }
-            }
-        }
-
-
-        return r;
-    }
-
-    // Determines terrain type from height map, which affects height and material type
-    // Input height is float in range [0, 1], n is number of different terrain types
-    private int TerrainType(float height, int n)
-    {
-        int r = 0;
-
-       for (int i = 0; i < n; i++)
-        {
-            if (height > terrainModifiers[i,0]) { r = i; }
-        }
-
-        return r;
-    }
-
-    private int TerrainHeight(float height, int[] vals)
-    {
-        int r = 0;
-        
-        if (vals[2] < 3) // Unmodified height values
-        {
-            r = (int)(((height - terrainModifiers[vals[1], 0]) * terrainModifiers[vals[1], 1] + terrainModifiers[vals[1], 2]) * maxHeight);
-        }
-        else if (vals[2] == 3) // Dungeon surround height values
-        {
-            r = vals[3];
-        }
-        else if (vals[2] == 4)
-        {
-            r = vals[3];
-        }
-        
-        return r;
-    }
-
-    private int Mod(int a, int b)
-    {
-        if (a < 0) { return (a % b + b) % b; }
-        else { return a % b; }
-    }
-
-    struct Tuple
-    {
-        public int a;
-        public int b;
-
-        public Tuple(int da, int db) { a = da; b = db; }
-    }
-}
-
-public class PerlinNoise
-{
-    // Gradient permutation array and its period
-    private readonly int[,] gradient = {
-        {1,1,0}, {-1,1,0}, {1,-1,0}, {-1,-1,0},
-        {1,0,1}, {-1,0,1}, {1,0,-1}, {-1,0,-1},
-        {0,1,1}, {0,-1,1}, {0,1,-1}, {0,-1,-1},
-        {1,1,0}, {0,-1,1}, {-1,1,0}, {0,-1,-1}};
-
-    private readonly int period;
-
-    // Settings for Perlin noise generation
-    private PseudoRandomGenerator rng;
-    private int gridSize;
-    private int octaves;
-    private float persistence;
-
-    // Constructor
-    public PerlinNoise(int seed)
-    {
-        period = gradient.GetLength(0);
-        rng = new PseudoRandomGenerator(seed);
-        gridSize = 64;
-        octaves = 3;
-        persistence = 0.5f;
-    }
-
-    // Returns a bounded float in [0, 1]
-    public float Perlin2D(int x, int y)
-    {
-        // Values for multi-octave calculation
-        float valueSum, amp, maxVal;
-        int freq;
-        
-        valueSum = 0f;
-        freq = 1;
-        amp = 1.0f;
-        maxVal = 0f;
-
-        for (int i = 0; i < octaves; i++)
-        {
-            valueSum += Calculate2D(x * freq, y * freq) * amp;
-            maxVal += amp;
-            amp *= persistence;
-            freq *= 2;
-        }
-
-        // return float in range [0, 1]: sum / maximum possible value
-        return valueSum / maxVal;
-    }
-
-    private float Calculate2D(int x, int y)
-    {
-        // Unit square values and distance
-        int x0, x1, y0, y1;
-        float xf, yf, u, v, dx0, dx1;
-        int[] k0, k1;
-
-        x0 = Mathf.FloorToInt((float)x / gridSize) * gridSize;
-        x1 = x0 + gridSize;
-        xf = (float)(x - x0) / gridSize;
-        y0 = Mathf.FloorToInt((float)y / gridSize) * gridSize;
-        y1 = y0 + gridSize;
-        yf = (float)(y - y0) / gridSize;
-
-        // Apply smoothstep
-        u = Fade(xf);
-        v = Fade(yf);
-
-        // Take 'random' unit gradients and interpolate on x then y on unit square
-        k0 = Gradient2D((int)(rng.UnitFloat(x0, y0) * period));
-        k1 = Gradient2D((int)(rng.UnitFloat(x1, y0) * period));
-        dx0 = Lerp(Dot(new float[2] { xf, yf }, k0), Dot(new float[2] { xf-1, yf }, k1), u);
-
-        k0 = Gradient2D((int)(rng.UnitFloat(x0, y1) * period));
-        k1 = Gradient2D((int)(rng.UnitFloat(x1, y1) * period));
-        dx1 = Lerp(Dot(new float[2] { xf, yf - 1 }, k0), Dot(new float[2] { xf - 1, yf - 1 }, k1), u);
-
-        // interpolate on y, set value in range [0 - 1]
-        return (Lerp(dx0, dx1, v) * 1.5f + 1) / 2;
-    }
-
-    // Smoothstep (fade) function: 6t^5 - 15t^4 + 10t^3
-    private float Fade(float t) { return t * t * t * (t * (t * 6 - 15) + 10); }
-
-    private int[] Gradient2D(int v)
-    {   
-        int[] g = new int[2];
-        g[0] = gradient[v, 0];
-        g[1] = gradient[v, 1];
-
-        return g;
-    }
-
-    private float Dot(float[] a, int[] b) { return a[0] * b[0] + a[1] * b[1]; }
-
-    private float Lerp(float v0, float v1, float t) { return (1 - t) * v0 + t * v1; }
 }

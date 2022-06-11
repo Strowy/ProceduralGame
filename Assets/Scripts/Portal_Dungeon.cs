@@ -1,23 +1,20 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using AIR.Flume;
+using Application.Interfaces;
 using UnityEngine;
 
-public class Portal_Dungeon : MonoBehaviour
+public class Portal_Dungeon : DependentBehaviour
 {
-    private DungeonController dc;
-    
-    // Start is called before the first frame update
-    void Start()
+    private IDungeonController _dungeonController;
+
+    public void Inject(IDungeonController dungeonController)
     {
-        dc = GameObject.FindGameObjectWithTag("DungeonController").GetComponent<DungeonController>();
+        _dungeonController = dungeonController;
     }
 
-    void OnTriggerEnter(Collider other)
+    public void OnTriggerEnter(Collider other)
     {
-        if (other.gameObject.CompareTag("Player"))
-        {
-            dc.SetGoalFlag(true);
-            dc.UpdateSeedLocation(this.transform.position);
-        }
+        if (!other.gameObject.CompareTag("Player")) return;
+        _dungeonController.SetGoalFlag(true);
+        _dungeonController.UpdateSeedLocation(transform.position);
     }
 }

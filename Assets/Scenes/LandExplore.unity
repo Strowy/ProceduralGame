@@ -152,7 +152,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 74482bfa70304e3459c4bbd621fdb0e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  player: {fileID: 1439677302}
   terrainChunk: {fileID: 4814082552374488519, guid: b3af2cdef88caf54a9434b80713bd4aa,
     type: 3}
   seedValue: 1128
@@ -362,12 +361,12 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 527576030}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
-  m_Father: {fileID: 1423627209}
-  m_RootOrder: 3
+  m_Father: {fileID: 1733341693}
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -608,7 +607,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 183ea1bd5fb2d8f45b6fea4bc3fbb2a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  player: {fileID: 1439677302}
   dungeonX: 128
   dungeonY: 128
   nfloors: 3
@@ -997,7 +995,6 @@ RectTransform:
   - {fileID: 1721006394}
   - {fileID: 1356154350}
   - {fileID: 1733341693}
-  - {fileID: 527576031}
   - {fileID: 1698486371}
   m_Father: {fileID: 0}
   m_RootOrder: 3
@@ -1019,6 +1016,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7dc7657af749bb04caea9cc49724067d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  uStartButton: {fileID: 1356154350}
+  uSeedInput: {fileID: 1733341693}
+  uMenuCamera: {fileID: 190411892}
   scoreText: {fileID: 1721006392}
   seedText: {fileID: 2016367794}
   floorText: {fileID: 1698486369}
@@ -1161,7 +1161,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 1423627209}
-  m_RootOrder: 4
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
@@ -1279,6 +1279,7 @@ RectTransform:
   m_Children:
   - {fileID: 1241670372}
   - {fileID: 2016367793}
+  - {fileID: 527576031}
   m_Father: {fileID: 1423627209}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1519,7 +1520,6 @@ MonoBehaviour:
   dungeonController: {fileID: 729192956}
   deadPortal: {fileID: 7393708018547186469, guid: 7ce25fc1a0e1aae4687d9d47d88cca08,
     type: 3}
-  seedValue: 0
 --- !u!1001 &2036002658401828395
 PrefabInstance:
   m_ObjectHideFlags: 0

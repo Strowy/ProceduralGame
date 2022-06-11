@@ -1,49 +1,75 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using AIR.Flume;
+using Application.Interfaces;
+using Infrastructure.Runtime;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class DisplayGameInfo : MonoBehaviour
+public class DisplayGameInfo : DependentBehaviour
 {
+    [SerializeField] private RectTransform uStartButton;
+    [SerializeField] private RectTransform uSeedInput;
+    [SerializeField] private GameObject uMenuCamera;
+
     public Text scoreText;
     public Text seedText;
     public Text floorText;
-    
-    private WorldController wc;
-    
-    // Start is called before the first frame update
-    void Start()
+
+    private ISeedService _seedService;
+    private IGameStateController _gameStateController;
+
+    public void Inject(
+        ISeedService seedService,
+        IGameStateController gameStateController)
     {
-        wc = GameObject.FindGameObjectWithTag("WorldController").GetComponent<WorldController>();
+        _seedService = seedService;
+        _gameStateController = gameStateController;
+    }
+
+    // Start is called before the first frame update
+    public void Start()
+    {
         scoreText.text = "";
         floorText.text = "";
     }
 
     // Update is called once per frame
-    void Update()
+    public void Update()
     {
-        if (wc.GetState() > 0) { scoreText.text = "Cleared: " + wc.GetScore().ToString(); }
-        if (wc.GetState() == 2)
+        DisplayScore();
+        DisplayDungeonInfo();
+    }
+
+    private void DisplayScore()
+    {
+        var status = _gameStateController.Status;
+        if (status == GameStatus.InOverworld || status == GameStatus.InDungeon)
+            scoreText.text = $"Cleared: {_gameStateController.Score}";
+    }
+
+    private void DisplayDungeonInfo()
+    {
+        if (_gameStateController.Status == GameStatus.InDungeon)
         {
-            DungeonController dc = GameObject.FindGameObjectWithTag("DungeonController").GetComponent<DungeonController>();
-            floorText.text = "Floor: " + dc.GetCurrentFloor().ToString() + " / " + dc.nfloors;
+            var dc = GameObject
+                .FindGameObjectWithTag("DungeonController")
+                .GetComponent<DungeonController>();
+            floorText.text = "Floor: " + dc.GetCurrentFloor() + " / " + dc.nfloors;
         }
-        else { floorText.text = ""; }
-        
+        else
+        {
+            floorText.text = "";
+        }
     }
 
     public void StartButtonClick()
     {
-        // Check if seed input is parsible to int
-        if (int.TryParse(seedText.text, out int result))
-        {
-            // If so, grab seed value and start game
-            wc.seedValue = result;
-            wc.SetState(0);
+        if (!int.TryParse(seedText.text, out var result)) return;
+        _seedService.SetSeed(result);
+        _gameStateController.SetStatus(GameStatus.Initialise);
 
-            // Turn off menu elements
-            GameObject[] obj = GameObject.FindGameObjectsWithTag("Menu");
-            foreach (GameObject gObj in obj) { gObj.SetActive(false); }
-        }
+        // Turn off menu elements
+        uStartButton.gameObject.SetActive(false);
+        uSeedInput.gameObject.SetActive(false);
+        uMenuCamera.SetActive(false);
     }
 }
