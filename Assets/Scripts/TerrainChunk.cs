@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using AIR.Flume;
+﻿using AIR.Flume;
 using Application.Interfaces;
 using Domain;
 using UnityEngine;

@@ -4,17 +4,17 @@ using Infrastructure.Runtime.Terrain;
 
 namespace Infrastructure.Runtime
 {
-    public class ProceduralServiceInstaller : ServiceInstaller
+    public class TestServiceInstaller : ServiceInstaller
     {
         protected override void InstallServices(FlumeServiceContainer container)
         {
             container
+                .Register<IGameStateController, NullGameStateController>()
+                .Register<IPropertiesService, PropertiesService>()
                 .Register<IValueSourceService, PseudoRandomSourceService>()
                 .Register<ISeedService, SeedService>()
-                .Register<IPlayerService, PlayerService>()
-                .Register<IGameStateController>(FindObjectOfType<WorldController>(true))
-                .Register<IDungeonController>(FindObjectOfType<DungeonController>(true))
-                .Register<IPropertiesService, PropertiesService>()
+                .Register<IHeightSource, PerlinNoiseGenerator>()
+                .Register<ITerrainService, TerrainService>()
                 ;
         }
     }
