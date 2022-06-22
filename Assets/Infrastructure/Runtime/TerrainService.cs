@@ -1,7 +1,8 @@
+using System;
 using AIR.Flume;
 using Application.Interfaces;
+using Domain;
 using UnityEngine;
-using TerrainData = Application.Interfaces.TerrainData;
 
 namespace Infrastructure.Runtime
 {
@@ -10,31 +11,41 @@ namespace Infrastructure.Runtime
         private int _maxHeight;
         private float[,] _terrainModifiers;
         private int _biomeSize;
+        private IntegerPoint _lastBiome;
 
         private IHeightSource _heightSource;
         private IPropertiesService _propertiesService;
+        private IValueSourceService _valueSourceService;
         private IValueSource _valueSource;
 
-        public TerrainData GetTerrainData(int x, int y)
+        public TerrainInfo GetTerrainData(int x, int y)
         {
             var cellData = CellData(x, y);
-            return new TerrainData
+            return new TerrainInfo
             {
                 Height = cellData[0],
-                Biome = cellData[1],
+                Zone = cellData[1],
                 Prop = (Prop) cellData[2]
             };
+        }
+
+        public IntegerPoint GetBiome(int x, int y)
+        {
+            var bx = Mathf.FloorToInt((float) x / _biomeSize);
+            var by = Mathf.FloorToInt((float) y / _biomeSize);
+            return new IntegerPoint(x, y);
         }
 
         public void Inject(
             IHeightSource heightSource,
             IPropertiesService propertiesService,
-            ISeedService seedService,
             IValueSourceService valueSourceService)
         {
             _heightSource = heightSource;
-            _valueSource = valueSourceService.GetNewValueSource(seedService.Seed);
+            _valueSourceService = valueSourceService;
+            _valueSource = valueSourceService.GetNewValueSource(1);
             _propertiesService = propertiesService;
+            _lastBiome = IntegerPoint.Zero;
             SetTerrainModifiers();
         }
 
@@ -73,18 +84,30 @@ namespace Infrastructure.Runtime
             }
         }
 
+        private static int SeedFromPosition(IntegerPoint position)
+        {
+            return Math.Abs(position.X * (position.Y + 13)) % 16384;
+        }
+
+        private void TrySetBiomeValueSource(int x, int y)
+        {
+            var currentBiome = GetBiome(x, y);
+            if (currentBiome == _lastBiome)
+                return;
+
+            _valueSource = _valueSourceService.GetNewValueSource(SeedFromPosition(currentBiome));
+            _lastBiome = currentBiome;
+        }
+
         // Main function to produce map cell information. Returns [height, terrain type, special data]
         private int[] CellData(int x, int y)
         {
-            int[] g = new int[4] { 0, 0, 0, 0 };
+            TrySetBiomeValueSource(x, y);
+
+            int[] g = { 0, 0, 0, 0 };
             float hVal;
-            int bx, by;
             Tuple spc;
             int n = 8; // 8 types of base terrain
-
-            // Biome x, y values
-            bx = Mathf.FloorToInt((float) x / _biomeSize);
-            by = Mathf.FloorToInt((float) y / _biomeSize);
 
             // Get noise map value
             hVal = _heightSource.GetUnitHeight(x, y);
@@ -92,7 +115,7 @@ namespace Infrastructure.Runtime
             // Get terrain type then calculate height and other values from that
             g[1] = TerrainType(hVal, n);
             // Special terrain type check
-            spc = SpecialTerrainType(x, y, g[1], bx, by);
+            spc = SpecialTerrainType(x, y, g[1], _lastBiome.X, _lastBiome.Y);
             g[2] = spc.a;
             g[3] = spc.b;
             // Terrain height

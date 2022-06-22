@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &270540112175522101
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 790909749830026358}
+  - component: {fileID: 3098109293367968607}
+  m_Layer: 0
+  m_Name: TerrainChunkView
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &790909749830026358
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 270540112175522101}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3098109293367968607
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 270540112175522101}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1b0f1e771fe432b88e19daaef0b2817, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  uTerrainCell: {fileID: 3028178472973272046, guid: 63ff720b096b6424b9e67b386ad0203b,
+    type: 3}
+  uPortalActive: {fileID: 877856187776463918, guid: dd36cd39164750a408662e3c28afa410,
+    type: 3}
+  uPortalClosed: {fileID: 7393708018547186469, guid: 7ce25fc1a0e1aae4687d9d47d88cca08,
+    type: 3}
+  uTerrainMaterials:
+  - {fileID: 2100000, guid: 2a8e563811fb13e45af00446ec0b1d7c, type: 2}
+  - {fileID: 2100000, guid: 5b0447688e035994e901c66ddff5519a, type: 2}
+  - {fileID: 2100000, guid: 4d67f9ba177042a4289b8cdc479c1c24, type: 2}
+  - {fileID: 2100000, guid: 86e774aa5dd266e4b82c755bb870b879, type: 2}
+  - {fileID: 2100000, guid: 52a9caebefa48fa43a04d8acbcc48a2e, type: 2}
+  - {fileID: 2100000, guid: a5cb1b3f616493045af1c91463b164a7, type: 2}
+  - {fileID: 2100000, guid: 42c57a85f3981ef449493144ea04b7f7, type: 2}
+  - {fileID: 2100000, guid: c9c9503e030de404db4536deaf62ff28, type: 2}
+  - {fileID: 2100000, guid: 00e8801d212ae03419a50cf224f32961, type: 2}
+  - {fileID: 2100000, guid: 4a516a1493c3d33429bf9ad6248621a6, type: 2}

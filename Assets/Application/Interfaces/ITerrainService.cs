@@ -1,14 +1,17 @@
+using Domain;
+
 namespace Application.Interfaces
 {
     public interface ITerrainService
     {
-        TerrainData GetTerrainData(int x, int y);
+        TerrainInfo GetTerrainData(int x, int y);
+        IntegerPoint GetBiome(int x, int y);
     }
 
-    public struct TerrainData
+    public struct TerrainInfo
     {
         public float Height;
-        public int Biome;
+        public int Zone;
         public Prop Prop;
     }
 
