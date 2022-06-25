@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using AIR.Flume;
@@ -10,29 +11,32 @@ namespace Infrastructure.Runtime
 {
     public class WorldController : DependentBehaviour, IGameStateController
     {
+        private Terrain.TerrainController _terrainController;
+        private IntegerPoint _cachedChunk = IntegerPoint.Zero;
+
         public GameStatus Status { get; private set; }
 
         public int Score { get; private set; }
 
         // Player
         public Transform player;
-        // Terrain Controller
-        public Transform terrainController;
         // Dungeon Controller
         public Transform dungeonController;
-        // Replacement object once portal is used
-        public Transform deadPortal;
 
-        private Vector3 _lastEnteredDungeonEntrance = Vector3.zero;
+        private IntegerPoint _lastEnteredDungeonEntrance = IntegerPoint.Zero;
 
         private List<IntegerPoint> _clearedDungeonEntrances;
 
         private IPlayerService _playerService;
+        private IPropertiesService _propertiesService;
 
-        public void Inject(IPlayerService playerService)
+        public void Inject(
+            IPlayerService playerService,
+            IPropertiesService propertiesService)
         {
             _playerService = playerService;
             _playerService.SetPlayerTransform(player);
+            _propertiesService = propertiesService;
         }
 
 
@@ -52,16 +56,11 @@ namespace Infrastructure.Runtime
                 case PortalType.Entrance:
                     // Dungeon entrance triggered in overworld
                     Status = GameStatus.InDungeon;
-                    _lastEnteredDungeonEntrance = location;
-
-                    // Portal breaks once used
-                    Transform portal = GameObject.Find(triggerObjectName).transform;
-                    Instantiate(deadPortal, location, Quaternion.identity, portal.parent);
-                    Destroy(portal.gameObject);
-
+                    _lastEnteredDungeonEntrance = ConvertToPoint(location);
 
                     // Hide terrain (so it doesn't have to re-generate later as there's no change)
-                    terrainController.gameObject.SetActive(false);
+                    _cachedChunk = _terrainController.CurrentChunk;
+                    _terrainController.gameObject.SetActive(false);
 
                     // Trigger dungeon generation
                     dungeonController.GetComponent<DungeonController>().SetSeedLocation(location);
@@ -77,15 +76,19 @@ namespace Infrastructure.Runtime
             }
         }
 
+        private IntegerPoint ConvertToPoint(Vector3 location)
+        {
+            var cellSize = _propertiesService.TerrainProperties.CellSize;
+            return new IntegerPoint(Mathf.FloorToInt(location.x / cellSize), Mathf.FloorToInt(location.z / cellSize));
+        }
+
         private void ReturnToOverworld()
         {
             _playerService.SetActive(false);
-            var entranceLocation = new IntegerPoint(
-                (int) _lastEnteredDungeonEntrance.x,
-                (int) _lastEnteredDungeonEntrance.z);
-            _clearedDungeonEntrances.Add(entranceLocation);
+            _clearedDungeonEntrances.Add(_lastEnteredDungeonEntrance);
             Score += 1;
-            terrainController.gameObject.SetActive(true);
+            _terrainController.gameObject.SetActive(true);
+            _terrainController.ForceUpdate(_cachedChunk);
             _playerService.SetAtMarkedLocation();
             _playerService.SetActive(true);
         }
@@ -104,11 +107,16 @@ namespace Infrastructure.Runtime
 
         private void Initialise()
         {
-            // Activate player
-            _playerService.SetActive(true);
-            // Ensure activation of the environment controllers
-            terrainController.gameObject.SetActive(true);
             dungeonController.gameObject.SetActive(true);
+            _terrainController = FindObjectOfType<Terrain.TerrainController>();
+            _terrainController.Initialise();
+            StartCoroutine(StartUpCycle());
+        }
+
+        private IEnumerator StartUpCycle()
+        {
+            yield return new WaitUntil(() => _terrainController.IsInitialised);
+            _terrainController.TrySpawnPlayer();
             Status = GameStatus.InOverworld;
         }
     }

@@ -1,5 +1,6 @@
 using AIR.Flume;
 using Application.Interfaces;
+using Infrastructure.Runtime.Terrain;
 
 namespace Infrastructure.Runtime
 {
@@ -13,6 +14,9 @@ namespace Infrastructure.Runtime
                 .Register<IPlayerService, PlayerService>()
                 .Register<IGameStateController>(FindObjectOfType<WorldController>(true))
                 .Register<IDungeonController>(FindObjectOfType<DungeonController>(true))
+                .Register<IPropertiesService, PropertiesService>()
+                .Register<IHeightSource, PerlinNoiseGenerator>()
+                .Register<ITerrainService, TerrainService>()
                 ;
         }
     }
