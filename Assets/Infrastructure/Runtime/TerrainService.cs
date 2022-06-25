@@ -33,7 +33,7 @@ namespace Infrastructure.Runtime
         {
             var bx = Mathf.FloorToInt((float) x / _biomeSize);
             var by = Mathf.FloorToInt((float) y / _biomeSize);
-            return new IntegerPoint(x, y);
+            return new IntegerPoint(bx, by);
         }
 
         public void Inject(

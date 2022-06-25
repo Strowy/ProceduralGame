@@ -112,7 +112,8 @@ namespace Infrastructure.Runtime.Terrain
             var portalType = _gameStateController.IsClearedDungeonEntrance(position)
                 ? uPortalClosed
                 : uPortalActive;
-            return Instantiate(portalType, terrainCellView.transform.position, Quaternion.identity, transform);
+            var pPosition = terrainCellView.transform.position + Vector3.up * 4;
+            return Instantiate(portalType, pPosition, Quaternion.identity, transform);
         }
 
         private void TrashOldObjects()

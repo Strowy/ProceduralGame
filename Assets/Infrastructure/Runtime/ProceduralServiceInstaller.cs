@@ -15,6 +15,8 @@ namespace Infrastructure.Runtime
                 .Register<IGameStateController>(FindObjectOfType<WorldController>(true))
                 .Register<IDungeonController>(FindObjectOfType<DungeonController>(true))
                 .Register<IPropertiesService, PropertiesService>()
+                .Register<IHeightSource, PerlinNoiseGenerator>()
+                .Register<ITerrainService, TerrainService>()
                 ;
         }
     }

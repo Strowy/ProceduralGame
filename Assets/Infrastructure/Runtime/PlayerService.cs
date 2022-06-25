@@ -24,6 +24,7 @@ namespace Infrastructure.Runtime
         public void SetAtMarkedLocation()
         {
             _playerCharacter.SetPositionAndRotation(_markedLocation, _playerCharacter.rotation);
+            Physics.SyncTransforms();
         }
 
         public void SetActive(bool isActive)
@@ -34,6 +35,7 @@ namespace Infrastructure.Runtime
         public void WarpToLocation(Vector3 location)
         {
             _playerCharacter.SetPositionAndRotation(location, _playerCharacter.rotation);
+            Physics.SyncTransforms();
         }
     }
 }

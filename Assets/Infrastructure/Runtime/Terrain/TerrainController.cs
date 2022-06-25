@@ -26,6 +26,7 @@ namespace Infrastructure.Runtime.Terrain
 
         public bool IsInitialised { get; private set; } = false;
         public bool IsSpawned { get; private set; } = false;
+        public IntegerPoint CurrentChunk => GetPlayerChunk();
 
         public void Inject(
             IPlayerService playerService,
@@ -67,13 +68,34 @@ namespace Infrastructure.Runtime.Terrain
             UpdateSurrounding(_lastChunk);
         }
 
+        public void ForceUpdate(IntegerPoint chunk)
+        {
+            ForceUpdateChunk(chunk.X, chunk.Y);
+        }
+
+        public void OnDrawGizmos()
+        {
+            if (!UnityEngine.Application.isPlaying) return;
+            if (!IsSpawned) return;
+            var tp = _propertiesService.TerrainProperties;
+            var realSize = tp.CellSize * tp.ChunkSize;
+            var chunk = GetPlayerChunk();
+            Gizmos.color = Color.magenta;
+            Gizmos.DrawWireCube(
+                new Vector3(
+                    chunk.X * realSize + realSize / 2,
+                    10,
+                    chunk.Y * realSize + realSize / 2),
+                Vector3.one * realSize);
+        }
+
         private IntegerPoint GetPlayerChunk()
         {
             var tp = _propertiesService.TerrainProperties;
             var realSize = tp.CellSize * tp.ChunkSize;
             var position = _playerService.Position;
-            var dx = Mathf.FloorToInt((position.x + 0.5f * realSize) / realSize);
-            var dz = Mathf.FloorToInt((position.z + 0.5f * realSize) / realSize);
+            var dx = Mathf.FloorToInt(position.x / realSize);
+            var dz = Mathf.FloorToInt(position.z / realSize);
             return new IntegerPoint(dx, dz);
         }
 
@@ -121,6 +143,21 @@ namespace Infrastructure.Runtime.Terrain
             _activeChunks.Add(chunk);
         }
 
+        private void ForceUpdateChunk(int x, int y)
+        {
+            var chunkSize = _propertiesService.TerrainProperties.ChunkSize;
+            var testPosition = new IntegerPoint(x * chunkSize, y * chunkSize);
+            var chunk = _activeChunks.FirstOrDefault(c => c.ChunkPosition == testPosition);
+            if (chunk == default)
+            {
+                chunk = _pooledChunks.Dequeue();
+                chunk.gameObject.SetActive(true);
+                _activeChunks.Add(chunk);
+            }
+
+            chunk.UpdateAtPosition(testPosition.X, testPosition.Y);
+        }
+
         private bool DistantFromPlayerChunk(IntegerPoint position)
         {
             var chunkSize = _propertiesService.TerrainProperties.ChunkSize;
@@ -150,7 +187,7 @@ namespace Infrastructure.Runtime.Terrain
             var sideLength = 2 * uRenderRange + 1;
             for (var i = 0; i < sideLength * sideLength * 2; i++)
             {
-                var terrainChunk = Instantiate(uTerrainChunkViewPrefab);
+                var terrainChunk = Instantiate(uTerrainChunkViewPrefab, transform);
                 terrainChunk.Initialise();
                 terrainChunk.gameObject.SetActive(false);
                 _pooledChunks.Enqueue(terrainChunk);
