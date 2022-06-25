@@ -149,7 +149,7 @@ namespace Infrastructure.Runtime
                                 // Entrance
                                 yPos = cellSize + this.transform.position.y;
                                 mCell = Object.Instantiate(dungeonObject, new Vector3(xPos, yPos, zPos), Quaternion.identity, dungeonChunk);
-                                mCell.GetComponent<MeshRenderer>().material = dungeonMaterials[0];
+                                mCell.GetComponent<MeshRenderer>().material = dungeonMaterials[1];
                                 mCell.localScale = new Vector3(mCell.localScale.x, mCell.localScale.y / 2, mCell.localScale.z);
 
                                 // Set player position
